@@ -2,12 +2,12 @@
   "name": "auth_service",
   "version": "1.0.0",
   "description": "Auth service for ft_transcendance (42 final common core project)",
-  "main": "src/global/index.ts",
+  "main": "src/app.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "node output/global/index.js",
+    "start": "tsc -p tsconfig.json && node 'output/app.js'",
     "lint": "eslint 'src/**/*.ts'",
-    "format": "prettier --write 'src/**/*.ts'"
+    "format": "prettier --write 'src/**/*.ts' 'src/*.ts'"
   },
   "author": "vSKAH",
   "license": "GPL-3.0-or-later",
@@ -23,6 +23,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "fastify": "^5.2.1"
   }
 }
