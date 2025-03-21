@@ -5,7 +5,7 @@
   "main": "src/global/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node output/global/index.js",
+    "dev": "node output/global/index.js",
     "lint": "eslint 'src/**/*.ts'",
     "format": "prettier --write 'src/**/*.ts'"
   },
@@ -16,13 +16,9 @@
     "@typescript-eslint/eslint-plugin": "^8.27.0",
     "@typescript-eslint/parser": "^8.27.0",
     "eslint": "^8.57.1",
-    "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-prettier": "^5.2.3",
-    "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^4.6.2",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   },
