@@ -8,4 +8,5 @@ cd project
 git checkout "$BRANCH"
 
 npm install --omit=dev
-npm run start
+npm run build
+node 'output/app.js'
