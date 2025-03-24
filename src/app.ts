@@ -14,6 +14,7 @@ async function start(): Promise<void> {
     }
 }
 
+console.log("port: " + process.env.PORT);
 console.log(process.env.BASE_ROUTE + "/healthcheck");
 
 app.get(process.env.BASE_ROUTE + "/healthcheck", (_req, response) => {

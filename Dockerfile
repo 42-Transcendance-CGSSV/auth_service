@@ -7,5 +7,5 @@ WORKDIR /app
 
 COPY entrypoint.sh /app/entrypoint.sh
 
-EXPOSE 8080
+EXPOSE $PORT
 ENTRYPOINT ["/bin/sh", "entrypoint.sh"]
