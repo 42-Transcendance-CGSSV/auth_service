@@ -4,8 +4,6 @@ import dotenv from "dotenv";
 const app = fastify({ logger: true });
 dotenv.config();
 
-function test(arg: string) {}
-
 //TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
     try {
