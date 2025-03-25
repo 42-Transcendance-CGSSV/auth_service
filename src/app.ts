@@ -1,7 +1,10 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
 
-const app = fastify({ logger: true });
+const app = fastify({
+    logger: true,
+    disableRequestLogging: true
+});
 dotenv.config();
 
 //TODO: FIXING ENV UNDEFINED
