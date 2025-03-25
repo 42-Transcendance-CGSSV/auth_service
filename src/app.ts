@@ -20,7 +20,7 @@ async function start(): Promise<void> {
     }
 }
 
-app.get(process.env.BASE_ROUTE + "/healthcheck", (_req, response) => {
+app.get("/healthcheck", (_req, response) => {
     response.send({ message: "Success" });
 });
 
