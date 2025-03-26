@@ -1,7 +1,0 @@
-PORT=5000
-
-JWT_SECRET=secret_jwt
-HASHING_SALT=mysecretsalt
-DATABASE_TABLE=auth_table
-DATABASE_USER=auth_user
-DATABASE_PASSWORD=db_path
