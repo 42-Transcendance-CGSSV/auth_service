@@ -1,12 +1,28 @@
-import { UserModel, AuthProvider } from "../models/user.model";
+import { IGoogleUser, ILocalUser, AuthProvider } from "../interfaces/user.interface";
 
 class FactoryUser {
-    public static createTranscendenceAccount(name: string, email: string, passwordHash: string): UserModel {
-        return new UserModel(name, email, passwordHash, AuthProvider.LOCAL, null, false, Date.now());
+    public static createLocalUser(id: string, name: string, email: string, passwordHash: string): ILocalUser {
+        return {
+            id,
+            name,
+            email,
+            passwordHash,
+            createdAt: new Date(),
+            isVerified: false,
+            authProvider: AuthProvider.LOCAL
+        };
     }
 
-    public static createGoogleAccount(name: string, email: string, externalProviderId: string): UserModel {
-        return new UserModel(name, email, null, AuthProvider.GOOGLE, externalProviderId, true, Date.now());
+    public static createGoogleUser(id: string, name: string, email: string, externalProviderId: string): IGoogleUser {
+        return {
+            id,
+            name,
+            email,
+            externalProviderId,
+            createdAt: new Date(),
+            isVerified: true,
+            authProvider: AuthProvider.GOOGLE
+        };
     }
 }
 

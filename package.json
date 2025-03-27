@@ -12,6 +12,7 @@
   "author": "vSKAH",
   "license": "GPL-3.0-or-later",
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.13.11",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
     "@typescript-eslint/parser": "^8.28.0",
@@ -24,9 +25,12 @@
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.9.1",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
+    "fastify-sqlite": "^1.1.0",
     "fluent-json-schema": "^5.0.0",
+    "remove": "^0.1.5",
     "typescript": "^5.8.2"
   }
 }

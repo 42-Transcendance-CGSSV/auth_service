@@ -8,6 +8,14 @@ const app = fastify({
 });
 dotenv.config();
 
+const listeners: string[] = ["SIGINT", "SIGTERM"];
+listeners.forEach((signal): void => {
+    process.on(signal, async () => {
+        await app.close();
+        process.exit(0);
+    });
+});
+
 //TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
     try {
@@ -21,18 +29,10 @@ async function start(): Promise<void> {
     }
 }
 
-const listeners: string[] = ["SIGINT", "SIGTERM"];
-listeners.forEach((signal): void => {
-    process.on(signal, async () => {
-        await app.close();
-        process.exit(0);
+registerRoutes(app).then(() => {
+    start().then(() => {
+        app.get("/healthcheck", (_req, response) => {
+            response.send({ message: "Success" });
+        });
     });
 });
-
-registerRoutes(app);
-
-app.get("/healthcheck", (_req, response) => {
-    response.send({ message: "Success" });
-});
-
-start();
