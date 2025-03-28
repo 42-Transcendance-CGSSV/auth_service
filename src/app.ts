@@ -2,6 +2,7 @@ import fastify from "fastify";
 import dotenv from "dotenv";
 import { registerRoutes } from "./routes/auth.routes";
 import { initDatabase } from "./database/database";
+import SegfaultHandler from "segfault-handler";
 
 const app = fastify({
     logger: {
@@ -23,6 +24,7 @@ listeners.forEach((signal): void => {
 //TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
     try {
+        SegfaultHandler.registerHandler("crash.log");
         const launched = await initDatabase(app);
         if (!launched) {
             app.log.error("Database failed to initialize");
