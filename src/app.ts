@@ -40,10 +40,9 @@ async function start(): Promise<void> {
     }
 }
 
-registerRoutes(app).then(() => {
-    start().then(() => {
-        app.get("/healthcheck", (_req, response) => {
-            response.send({ message: "Success" });
-        });
-    });
+start();
+registerRoutes(app);
+
+app.get("/healthcheck", (_req, response) => {
+    response.send({ message: "Success" });
 });
