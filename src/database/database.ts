@@ -5,6 +5,12 @@ import fs from "fs";
 
 export async function initDatabase(app: FastifyInstance): Promise<boolean> {
     try {
+        fs.mkdir("./data", { recursive: true }, (err) => {
+            if (err) {
+                app.log.error("An error occurred while creating the data directory", err);
+                return;
+            }
+        });
         const createStream = fs.createWriteStream("./data/auth_database.db");
         createStream.end();
 
@@ -12,16 +18,16 @@ export async function initDatabase(app: FastifyInstance): Promise<boolean> {
         app.log.debug("DataSource is now open!");
 
         if (!(await isOpen(app))) {
-            return false;
+            return Promise.resolve(false);
         }
 
         await CreateUsersTable(app);
         app.log.debug("Table users has been created!");
 
-        return true;
+        return Promise.resolve(true);
     } catch (err) {
         app.log.error("An error occurred while initializing the database", err);
-        return false;
+        return Promise.reject(err);
     }
 }
 
