@@ -1,7 +1,7 @@
-import schema, { ObjectSchema } from "fluent-json-schema";
-import { AuthProvider, UserModel } from "../models/user.model";
+import schema from "fluent-json-schema";
+import { AuthProvider } from "../interfaces/user.interface";
 
-export const registerSchema: ObjectSchema<UserModel> = schema
+export const registerSchema = schema
     .object()
     .prop("name", schema.string().minLength(4).pattern("^[A-Za-z]+$").required())
     .prop("email", schema.string().format("email").required())

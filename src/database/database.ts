@@ -1,7 +1,5 @@
 import fpSqlitePlugin from "fastify-sqlite-typed";
-import { Dbmode } from "fastify-sqlite-typed/src/types";
 import { FastifyInstance } from "fastify";
-import CreateAuthDatabase from "./migrations/create.auth.database";
 import CreateUsersTable from "./migrations/create.users.table";
 
 export async function initDatabase(app: FastifyInstance): Promise<boolean> {
@@ -9,8 +7,9 @@ export async function initDatabase(app: FastifyInstance): Promise<boolean> {
         await openDatabase(app);
         app.log.debug("DataSource is now open!");
 
-        await CreateAuthDatabase(app);
-        app.log.debug("Database transcendence_auth has been created!");
+        if (!(await isOpen(app))) {
+            return false;
+        }
 
         await CreateUsersTable(app);
         app.log.debug("Table users has been created!");
@@ -24,8 +23,8 @@ export async function initDatabase(app: FastifyInstance): Promise<boolean> {
 
 export async function openDatabase(app: FastifyInstance): Promise<void> {
     return app.register(fpSqlitePlugin, {
-        dbFilename: "../data/auth_database.db",
-        mode: Dbmode.FULLMUTEX
+        dbFilename: "./data/auth_database.db",
+        mode: 6
     });
 }
 

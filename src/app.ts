@@ -4,7 +4,10 @@ import { registerRoutes } from "./routes/auth.routes";
 import { initDatabase } from "./database/database";
 
 const app = fastify({
-    logger: true,
+    logger: {
+        enabled: true,
+        level: "debug"
+    },
     disableRequestLogging: true
 });
 dotenv.config();
