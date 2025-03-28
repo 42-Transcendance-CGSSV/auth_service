@@ -20,10 +20,10 @@ export async function initDatabase(app: FastifyInstance): Promise<boolean> {
         await CreateUsersTable(app);
         app.log.debug("Table users has been created!");
 
-        return Promise.resolve(true);
+        return true;
     } catch (err) {
         app.log.error("An error occurred while initializing the database", err);
-        return Promise.reject(err);
+        return false;
     }
 }
 
