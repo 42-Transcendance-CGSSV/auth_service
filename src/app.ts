@@ -9,7 +9,7 @@ const app = fastify({
         enabled: true,
         level: "debug"
     },
-    disableRequestLogging: true
+    disableRequestLogging: false
 });
 dotenv.config();
 
@@ -43,6 +43,6 @@ async function start(): Promise<void> {
 start();
 registerRoutes(app);
 
-app.get("/healthcheck", (_req, response) => {
+app.get("healthcheck", (_req, response) => {
     response.send({ message: "Success" });
 });

@@ -1,0 +1,74 @@
+openapi: 3.1.0
+info:
+  title: Auth Routes
+  description: Auth Routes for the project fr_transcendence
+  version: 1.0.0
+servers:
+  - url: 'https://172.17.0.1:25565/'
+    description: Localhost server
+
+tags:
+  - name: Auth
+    description: Everything about Auth
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Auth
+      description: "Register a user with the local provider"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocalUserRegister'
+      responses:
+        "200":
+          description: "User registered successfully"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "User registered successfully"
+        "400":
+          description: "Invalid input"
+        "500":
+          description: "Server error"
+
+components:
+  schemas:
+    LocalUserRegister:
+      type: object
+      required:
+        - name
+        - email
+        - authProvider
+      properties:
+        name:
+          type: string
+          minLength: 4
+          pattern: "^[A-Za-z]+$"
+          example: "vSKAH"
+        email:
+          type: string
+          format: email
+          example: "jbadaire@student.42lyon.fr"
+        password:
+          type: string
+          minLength: 8
+          format: password
+          example: "Password123!"
+        auth_provider:
+          type: string
+          enum: [ local, google ]
+          default: local
+          example: "local"
+        external_provider_id:
+          type: string
+          enum: [ gthgth4rgr8g28, tgth4hgthg ]
+          default: gthgth4rgr8g28
+          example: "gthgth4rgr8g28"
