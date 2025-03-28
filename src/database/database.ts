@@ -17,10 +17,6 @@ export async function initDatabase(app: FastifyInstance): Promise<boolean> {
         await openDatabase(app);
         app.log.debug("DataSource is now open!");
 
-        if (!(await isOpen(app))) {
-            return Promise.resolve(false);
-        }
-
         await CreateUsersTable(app);
         app.log.debug("Table users has been created!");
 
