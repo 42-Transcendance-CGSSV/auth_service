@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 
 function createUsersTable(app: FastifyInstance): Promise<void> {
-    return app.db.exec(`
+    return app.db.all(`
       CREATE TABLE IF NOT EXISTS users
       (
           id

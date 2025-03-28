@@ -7,5 +7,4 @@ cd project
 
 git checkout "$BRANCH"
 
-npm run build
-node --inspect 'output/app.js'
+npm run start
