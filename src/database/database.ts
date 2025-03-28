@@ -1,9 +1,13 @@
 import fpSqlitePlugin from "fastify-sqlite-typed";
 import { FastifyInstance } from "fastify";
 import CreateUsersTable from "./migrations/create.users.table";
+import fs from "fs";
 
 export async function initDatabase(app: FastifyInstance): Promise<boolean> {
     try {
+        const createStream = fs.createWriteStream("../../data/auth_database.db");
+        createStream.end();
+
         await openDatabase(app);
         app.log.debug("DataSource is now open!");
 

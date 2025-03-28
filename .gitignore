@@ -6,4 +6,4 @@ output/
 package-lock.json
 .github/
 /.github/
-./data/
+/data/auth_database.db
