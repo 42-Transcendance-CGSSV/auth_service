@@ -8,4 +8,4 @@ cd project
 git checkout "$BRANCH"
 
 npm run build
-node 'output/app.js'
+node --inspect 'output/app.js'
