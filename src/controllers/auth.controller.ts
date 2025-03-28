@@ -1,24 +1,25 @@
 import { FastifyInstance } from "fastify";
 import { registerSchema } from "../schemas/user.schemas";
-import { AuthProvider, UserModel } from "../models/user.model";
+import { AuthProvider, IExternalUser, ILocalUser, IUser } from "../interfaces/user.interface";
 import { AuthService } from "../services/auth.service";
 import UserFactory from "../factory/factory.user";
 
 export async function AuthController(app: FastifyInstance): Promise<void> {
     const authService = new AuthService();
 
-    app.post<{ Body: UserModel }>("/register", {
+    app.post("/register", {
         schema: { body: registerSchema },
         handler: async (req, rep) => {
-            let user: UserModel;
-            if (req.body.getAuthProvider == AuthProvider.LOCAL) {
-                user = UserFactory.createTranscendenceAccount(req.body.getName, req.body.getEmail, req.body.getPassword as string);
-            } else if (req.body.getAuthProvider == AuthProvider.GOOGLE) {
-                user = UserFactory.createGoogleAccount(req.body.getName, req.body.getEmail, req.body.getExternalProviderId as string);
+            const typedBody = req.body as IUser;
+            let user: IUser;
+            if (typedBody.authProvider == AuthProvider.LOCAL) {
+                user = UserFactory.createLocalUser(typedBody.name, typedBody.email, (req.body as ILocalUser).passwordHash);
+            } else if (typedBody.authProvider == AuthProvider.GOOGLE) {
+                user = UserFactory.createGoogleUser(typedBody.name, typedBody.email, (req.body as IExternalUser).externalProviderId);
             } else {
                 throw new Error("Invalid auth provider");
             }
-            const registeredUser = await authService.registerUser(user);
+            const registeredUser = await authService.registerUser(user, app);
             rep.send(registeredUser);
         }
     }); //Inscription d'un nouvel utilisateur

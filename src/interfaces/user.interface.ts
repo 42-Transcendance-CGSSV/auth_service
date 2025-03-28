@@ -1,8 +1,8 @@
 export interface IUser {
-    id: string;
+    id: number;
     name: string;
     email: string;
-    createdAt: Date;
+    createdAt: number;
     isVerified: boolean;
     authProvider: AuthProvider;
 }
@@ -16,6 +16,6 @@ export interface ILocalUser extends IUser {
     passwordHash: string;
 }
 
-export interface IGoogleUser extends IUser {
+export interface IExternalUser extends IUser {
     externalProviderId: string;
 }

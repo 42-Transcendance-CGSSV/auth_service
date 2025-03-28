@@ -1,6 +1,7 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
 import { registerRoutes } from "./routes/auth.routes";
+import { initDatabase } from "./database/database";
 
 const app = fastify({
     logger: true,
@@ -19,6 +20,7 @@ listeners.forEach((signal): void => {
 //TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
     try {
+        await initDatabase(app);
         await app.listen({
             port: Number(process.env.PORT),
             host: "0.0.0.0"
