@@ -64,4 +64,11 @@ createDatabase(app)
         });
         await start();
     })
-    .catch(() => process.exit(1));
+    .catch((error) => {
+        app.log.fatal("An error occurred while starting the server");
+        app.log.fatal("Please check the database connection and environment variables");
+        if (error instanceof Error) {
+            app.log.fatal(error.message);
+        }
+        process.exit(1);
+    });
