@@ -22,7 +22,8 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.5",
     "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "pino-pretty": "^13.0.0"
   },
   "dependencies": {
     "@fastify/jwt": "^9.1.0",

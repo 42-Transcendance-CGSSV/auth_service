@@ -1,7 +1,6 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
 import { registerRoutes } from "./routes/auth.routes";
-import SegfaultHandler from "segfault-handler";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
 import { env } from "./utils/environment";
@@ -9,6 +8,12 @@ import { createDatabase } from "./database/database";
 
 const app = fastify({
     logger: {
+        transport: {
+            target: "pino-pretty",
+            options: {
+                colorize: true
+            }
+        },
         enabled: true,
         level: env.LOG_LEVEL,
         timestamp: () => {
@@ -16,11 +21,15 @@ const app = fastify({
             const day = String(now.getDate()).padStart(2, "0");
             const month = String(now.getMonth() + 1).padStart(2, "0");
             const year = String(now.getFullYear()).slice(-2);
+            const hours = String(now.getHours()).padStart(2, "0");
+            const minutes = String(now.getMinutes()).padStart(2, "0");
             const seconds = String(now.getSeconds()).padStart(2, "0");
             const milliseconds = String(now.getMilliseconds());
             const logTime = env.LOG_TIME_FORMAT.replace("${day}", day)
                 .replace("${month}", month)
                 .replace("${year}", year)
+                .replace("${hours}", hours)
+                .replace("${minutes}", minutes)
                 .replace("${seconds}", seconds)
                 .replace("${milliseconds}", milliseconds);
             return `,"time":"${logTime}"`;
@@ -39,8 +48,6 @@ listeners.forEach((signal): void => {
 });
 
 async function start(): Promise<void> {
-    SegfaultHandler.registerHandler("crash.log");
-
     app.register(fastifyCookie);
     app.register(fastifyJwt, {
         secret: env.JWT_SECRET as string,
