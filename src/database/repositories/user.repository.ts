@@ -16,19 +16,14 @@ export async function createUsersTable(): Promise<void> {
             isverified boolean NOT NULL
         )`;
 
-    try {
-        const db = await dbPool.acquire();
-        await new Promise<void>((resolve, reject) => {
-            db.run(query, (err) => {
-                dbPool.release(db);
-                if (err) reject(new Error("Failed to create users table: " + err.message));
-                else resolve();
-            });
+    const db = await dbPool.acquire();
+    await new Promise<void>((resolve, reject) => {
+        db.run(query, (err) => {
+            dbPool.release(db);
+            if (err) reject(new Error("Failed to create users table: " + err.message));
+            else resolve();
         });
-    } catch (error) {
-        console.error("Error creating refresh users table:", error);
-        throw error;
-    }
+    });
 }
 
 export async function insertUser(user: IUser): Promise<IUser> {
