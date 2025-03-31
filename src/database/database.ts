@@ -1,48 +1,30 @@
-import fpSqlitePlugin from "fastify-sqlite-typed";
-import { FastifyInstance } from "fastify";
-import CreateUsersTable from "./migrations/create.users.table";
-import fs from "fs";
+import { createPool, Factory, Pool } from "generic-pool";
+import sqlite3 from "sqlite3";
 
-export async function initDatabase(app: FastifyInstance): Promise<boolean> {
-    try {
-        fs.mkdir("./data", { recursive: true }, (err) => {
+const sqlite3Factory: Factory<sqlite3.Database> = {
+    create: (): any => {
+        return new sqlite3.Database("../data/my-database.db");
+    },
+
+    destroy: (db: sqlite3.Database): any => {
+        db.close((err) => {
             if (err) {
-                app.log.error("An error occurred while creating the data directory", err);
-                return;
+                console.error("Error closing database:", err.message);
             }
         });
-        const createStream = fs.createWriteStream("./data/auth_database.db");
-        createStream.end();
-
-        await openDatabase(app);
-        app.log.debug("DataSource is now open!");
-
-        await CreateUsersTable(app);
-        app.log.debug("Table users has been created!");
-
-        return true;
-    } catch (err) {
-        app.log.error("An error occurred while initializing the database", err);
-        return false;
+    },
+    validate: (db: sqlite3.Database) => {
+        return new Promise<boolean>((resolve) => {
+            db.get("SELECT 1", [], (err) => {
+                resolve(!err);
+            });
+        });
     }
-}
+};
 
-export async function openDatabase(app: FastifyInstance): Promise<void> {
-    return app.register(fpSqlitePlugin, {
-        dbFilename: "./data/auth_database.db",
-        mode: 6
-    });
-}
-
-export async function isOpen(app: FastifyInstance): Promise<boolean> {
-    return app.db
-        .get("SELECT 1")
-        .catch(() => {
-            Promise.reject(false);
-        })
-        .then(() => Promise.resolve(true));
-}
-
-export async function closeDatabase(app: FastifyInstance): Promise<void> {
-    return app.db.close();
-}
+export const dbPool: Pool<sqlite3.Database> = createPool(sqlite3Factory, {
+    min: 2,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    testOnBorrow: true
+});

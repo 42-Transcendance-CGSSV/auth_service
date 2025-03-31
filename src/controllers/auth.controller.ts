@@ -1,26 +1,57 @@
-import { FastifyInstance } from "fastify";
+import { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { registerSchema } from "../schemas/user.schemas";
-import { AuthProvider, IExternalUser, ILocalUser, IUser } from "../interfaces/user.interface";
+import { AuthProvider, IUser } from "../interfaces/user.interface";
 import { AuthService } from "../services/auth.service";
-import UserFactory from "../factory/factory.user";
+import { camelCase, mapKeys } from "lodash";
+import { generateJWT } from "../utils/jwt.util";
 
 export async function AuthController(app: FastifyInstance): Promise<void> {
     const authService = new AuthService();
 
     app.post("/register", {
         schema: { body: registerSchema },
-        handler: async (req, rep) => {
-            const typedBody = req.body as IUser;
-            let user: IUser;
-            if (typedBody.authProvider == AuthProvider.LOCAL) {
-                user = UserFactory.createLocalUser(typedBody.name, typedBody.email, (req.body as ILocalUser).passwordHash);
-            } else if (typedBody.authProvider == AuthProvider.GOOGLE) {
-                user = UserFactory.createGoogleUser(typedBody.name, typedBody.email, (req.body as IExternalUser).externalProviderId);
-            } else {
-                throw new Error("Invalid auth provider");
+        onError: (_request, rep, error: FastifyError) => {
+            rep.status(400).send({ error: error.message });
+        },
+        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            if (!req.body) {
+                throw new Error("Request body is missing");
             }
-            const registeredUser = await authService.registerUser(user, app);
-            rep.send(registeredUser);
+
+            const camelCaseBody = mapKeys(req.body, (_, key) => camelCase(key));
+
+            const typedBody: { authProvider: AuthProvider } = {
+                ...camelCaseBody,
+                authProvider: AuthProvider[camelCaseBody.authProvider as keyof typeof AuthProvider]
+            };
+
+            if (typedBody.authProvider !== AuthProvider.LOCAL) {
+                throw new Error("Route register can only be used with Local authProvider");
+            }
+            const registeredUser: IUser = await authService.registerUser(typedBody);
+            const returnedValue: { id: number; name: string; authProvider: AuthProvider; isVerified: boolean } = {
+                id: registeredUser.id,
+                name: registeredUser.name,
+                authProvider: registeredUser.authProvider,
+                isVerified: registeredUser.isVerified
+            };
+            const token: string = generateJWT(app, returnedValue, process.env.JWT_EXPIRE_TIME as string);
+            const refreshToken = generateJWT(app, { id: registeredUser.id }, "30d");
+
+            rep.setCookie("auth_token", token, {
+                httpOnly: true,
+                secure: process.env.ENVIRONMENT === "PRODUCTION",
+                sameSite: "strict",
+                path: "/"
+            });
+            rep.setCookie("refresh_token", refreshToken, {
+                httpOnly: true,
+                secure: process.env.ENVIRONMENT === "PRODUCTION",
+                sameSite: "strict",
+                path: "/refresh"
+            });
+
+            rep.send({ user: returnedValue });
         }
     }); //Inscription d'un nouvel utilisateur
 

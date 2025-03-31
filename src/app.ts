@@ -1,8 +1,12 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
 import { registerRoutes } from "./routes/auth.routes";
-import { initDatabase } from "./database/database";
 import SegfaultHandler from "segfault-handler";
+import fastifyJwt from "@fastify/jwt";
+import fastifyCookie from "fastify-cookie";
+import fs from "fs";
+import { createUsersTable } from "./database/repositories/user.repository";
+import { createRefreshTokensTable } from "./database/repositories/tokens.repository";
 
 const app = fastify({
     logger: {
@@ -23,26 +27,38 @@ listeners.forEach((signal): void => {
 
 //TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
-    try {
-        SegfaultHandler.registerHandler("crash.log");
-        const launched = await initDatabase(app);
-        if (!launched) {
-            app.log.error("Database failed to initialize");
+    SegfaultHandler.registerHandler("crash.log");
+    fs.mkdir("./data/", { recursive: true }, (err) => {
+        if (err) {
+            app.log.error("An error occurred while creating the data directory", err);
             process.exit(1);
         }
-        await app.listen({
-            port: Number(process.env.PORT),
-            host: "0.0.0.0"
-        });
-    } catch (error) {
-        app.log.error(error);
-        process.exit(1);
-    }
+    });
+
+    const createStream = fs.createWriteStream("./data/auth_database.db");
+    createStream.end();
+
+    await createUsersTable();
+    await createRefreshTokensTable();
+
+    app.register(fastifyCookie);
+    app.register(fastifyJwt, {
+        secret: process.env.JWT_SECRET as string,
+        cookie: {
+            cookieName: "token",
+            signed: false
+        }
+    });
+
+    await app.listen({
+        port: Number(process.env.PORT),
+        host: "0.0.0.0"
+    });
 }
 
 start();
 registerRoutes(app);
 
-app.get("healthcheck", (_req, response) => {
+app.get("/healthcheck", (_req, response) => {
     response.send({ message: "Success" });
 });

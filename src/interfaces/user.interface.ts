@@ -8,8 +8,8 @@ export interface IUser {
 }
 
 export enum AuthProvider {
-    LOCAL = 0,
-    GOOGLE = 1
+    LOCAL,
+    EXTERNAL
 }
 
 export interface ILocalUser extends IUser {

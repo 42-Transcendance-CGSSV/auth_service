@@ -1,34 +1,32 @@
-import { AuthProvider, ILocalUser, IUser } from "../interfaces/user.interface";
+import { AuthProvider, IExternalUser, ILocalUser, IUser } from "../interfaces/user.interface";
 import HashUtil from "../utils/hash.util";
-import { FastifyInstance } from "fastify";
-import insertOrUpdateInternalUser from "../database/migrations/update.user.row";
+import { insertUser, userExists } from "../database/repositories/user.repository";
+import UserFactory from "../factory/factory.user";
 
 export class AuthService {
-    public async registerUser(user: IUser, app: FastifyInstance): Promise<IUser | number> {
-        //Check if the user with the same name or email already exists in database
+    public async registerUser(typedBody: any): Promise<IUser> {
+        let user: IUser;
 
-        if (user.authProvider === AuthProvider.LOCAL) {
-            return this.registerLocalUser(user, app);
+        if (typedBody.authProvider === AuthProvider.LOCAL) {
+            if (!typedBody.password) throw new Error("Password is required for local users.");
+            user = UserFactory.createLocalUser(typedBody.name, typedBody.email, typedBody.password);
+        } else if (typedBody.authProvider === AuthProvider.EXTERNAL) {
+            if (!typedBody.externalProviderId) throw new Error("External provider ID is required for External users.");
+            user = UserFactory.createGoogleUser(typedBody.name, typedBody.email, typedBody.externalProviderId);
         } else {
-            // Check if the user with the same externalProviderId already exists in database
-            // Save google user to database
-            return Promise.resolve(0);
-        }
-    }
-
-    private async registerLocalUser(user: IUser, app: FastifyInstance): Promise<IUser> {
-        if (user.authProvider !== AuthProvider.LOCAL) {
-            return Promise.reject(new Error("Invalid auth provider, local auth provider is expected"));
+            throw new Error("Invalid auth provider");
         }
 
-        if (!("passwordHash" in user)) {
-            return Promise.reject(new Error("Invalid local user: passwordHash is required"));
+        const exists = await userExists(user.email, user.name);
+        if (exists) {
+            throw new Error("User already exists");
+        }
+        if (user.authProvider === AuthProvider.LOCAL) {
+            const localUser = user as ILocalUser;
+            localUser.passwordHash = await HashUtil.hashPassword(localUser.passwordHash);
+            return insertUser(localUser);
         }
 
-        const localUser = user as ILocalUser;
-        localUser.passwordHash = await HashUtil.hashPassword(localUser.passwordHash);
-        // Save local user to database
-
-        return Promise.resolve(insertOrUpdateInternalUser(localUser, app));
+        return insertUser(user as IExternalUser);
     }
 }

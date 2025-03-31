@@ -21,7 +21,7 @@ class FactoryUser {
             externalProviderId,
             createdAt: Date.now(),
             isVerified: true,
-            authProvider: AuthProvider.GOOGLE
+            authProvider: AuthProvider.EXTERNAL
         };
     }
 }
