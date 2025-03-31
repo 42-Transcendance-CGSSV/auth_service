@@ -10,7 +10,7 @@ import { createDatabase } from "./database/database";
 const app = fastify({
     logger: {
         enabled: true,
-        level: "debug",
+        level: env.LOG_LEVEL,
         timestamp: () => {
             const now = new Date();
             const day = String(now.getDate()).padStart(2, "0");
@@ -18,7 +18,12 @@ const app = fastify({
             const year = String(now.getFullYear()).slice(-2);
             const seconds = String(now.getSeconds()).padStart(2, "0");
             const milliseconds = String(now.getMilliseconds());
-            return `,"time":"${day}/${month}/${year} ${seconds}s-${milliseconds}ms"`;
+            const logTime = env.LOG_TIME_FORMAT.replace("${day}", day)
+                .replace("${month}", month)
+                .replace("${year}", year)
+                .replace("${seconds}", seconds)
+                .replace("${milliseconds}", milliseconds);
+            return `,"time":"${logTime}"`;
         }
     },
     disableRequestLogging: false
