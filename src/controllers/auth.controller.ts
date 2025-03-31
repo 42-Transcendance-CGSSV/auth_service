@@ -4,6 +4,7 @@ import { AuthProvider, IUser } from "../interfaces/user.interface";
 import { AuthService } from "../services/auth.service";
 import { camelCase, mapKeys } from "lodash";
 import { generateJWT } from "../utils/jwt.util";
+import { env } from "../utils/environment";
 
 export async function AuthController(app: FastifyInstance): Promise<void> {
     const authService = new AuthService();
@@ -35,18 +36,18 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
                 authProvider: registeredUser.authProvider,
                 isVerified: registeredUser.isVerified
             };
-            const token: string = generateJWT(app, returnedValue, process.env.JWT_EXPIRE_TIME as string);
+            const token: string = generateJWT(app, returnedValue, env.JWT_EXPIRE_TIME);
             const refreshToken = generateJWT(app, { id: registeredUser.id }, "30d");
 
             rep.setCookie("auth_token", token, {
                 httpOnly: true,
-                secure: process.env.ENVIRONMENT === "PRODUCTION",
+                secure: env.ENVIRONMENT === "PRODUCTION",
                 sameSite: "strict",
                 path: "/"
             });
             rep.setCookie("refresh_token", refreshToken, {
                 httpOnly: true,
-                secure: process.env.ENVIRONMENT === "PRODUCTION",
+                secure: env.ENVIRONMENT === "PRODUCTION",
                 sameSite: "strict",
                 path: "/refresh"
             });

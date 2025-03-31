@@ -4,14 +4,22 @@ import { registerRoutes } from "./routes/auth.routes";
 import SegfaultHandler from "segfault-handler";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
-import fs from "fs";
-import { createUsersTable } from "./database/repositories/user.repository";
-import { createRefreshTokensTable } from "./database/repositories/tokens.repository";
+import { env } from "./utils/environment";
+import { createDatabase } from "./database/database";
 
 const app = fastify({
     logger: {
         enabled: true,
-        level: "debug"
+        level: "debug",
+        timestamp: () => {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, "0");
+            const month = String(now.getMonth() + 1).padStart(2, "0");
+            const year = String(now.getFullYear()).slice(-2);
+            const seconds = String(now.getSeconds()).padStart(2, "0");
+            const milliseconds = String(now.getMilliseconds());
+            return `,"time":"${day}/${month}/${year} ${seconds}s-${milliseconds}ms"`;
+        }
     },
     disableRequestLogging: false
 });
@@ -25,25 +33,12 @@ listeners.forEach((signal): void => {
     });
 });
 
-//TODO: FIXING ENV UNDEFINED
 async function start(): Promise<void> {
     SegfaultHandler.registerHandler("crash.log");
-    fs.mkdir("./data/", { recursive: true }, (err) => {
-        if (err) {
-            app.log.error("An error occurred while creating the data directory", err);
-            process.exit(1);
-        }
-    });
-
-    const createStream = fs.createWriteStream("./data/auth_database.db");
-    createStream.end();
-
-    await createUsersTable();
-    await createRefreshTokensTable();
 
     app.register(fastifyCookie);
     app.register(fastifyJwt, {
-        secret: process.env.JWT_SECRET as string,
+        secret: env.JWT_SECRET as string,
         cookie: {
             cookieName: "token",
             signed: false
@@ -51,14 +46,17 @@ async function start(): Promise<void> {
     });
 
     await app.listen({
-        port: Number(process.env.PORT),
+        port: Number(env.PORT),
         host: "0.0.0.0"
     });
 }
 
-start();
-registerRoutes(app);
-
-app.get("/healthcheck", (_req, response) => {
-    response.send({ message: "Success" });
-});
+createDatabase(app)
+    .then(async () => {
+        await registerRoutes(app);
+        app.get("/healthcheck", (_req, response) => {
+            response.send({ message: "Success" });
+        });
+        await start();
+    })
+    .catch(() => process.exit(1));

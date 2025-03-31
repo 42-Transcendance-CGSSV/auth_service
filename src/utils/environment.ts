@@ -1,0 +1,10 @@
+export const env = {
+    ENVIRONMENT: process.env.ENVIRONMENT || "DEVELOPMENT",
+    PORT: (process.env.PORT as unknown as number) ? parseInt(process.env.PORT as string, 10) : 3000,
+    DB_PATH: process.env.DB_PATH || "./data/auth_database.db",
+    DB_TOKENS_TABLE: process.env.DB_TOKENS_TABLE || "tokens",
+    DB_USERS_TABLE: process.env.DB_USERS_TABLE || "users",
+    JWT_SECRET: process.env.JWT_SECRET || "default_secret",
+    JWT_EXPIRE_TIME: process.env.JWT_EXPIRE_TIME || "1h",
+    JWT_REFRESH_EXPIRE_TIME: process.env.JWT_REFRESH_EXPIRE_TIME || "30d"
+};
