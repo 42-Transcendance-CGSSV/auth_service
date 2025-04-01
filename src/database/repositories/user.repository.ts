@@ -79,12 +79,12 @@ export async function getUserByEmail(email: string): Promise<IUser | null> {
     });
 }
 
-export async function getUserById(id: number): Promise<IUser | null> {
+export async function getUserById(id: number): Promise<IUser> {
     const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE id = ?`;
 
     const db = await dbPool.acquire();
 
-    return new Promise<IUser | null>((resolve, reject) => {
+    return new Promise<IUser>((resolve, reject) => {
         db.get<IUser>(query, [id], (err, row) => {
             dbPool.release(db);
             if (err) reject(new Error("Unable to get user by ID: " + err.message));

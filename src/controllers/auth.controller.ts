@@ -1,17 +1,18 @@
-import { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { registerSchema } from "../schemas/user.schemas";
 import { AuthProvider, IUser } from "../interfaces/user.interface";
 import { AuthService } from "../services/auth.service";
 import { camelCase, mapKeys } from "lodash";
 import { generateJWT } from "../utils/jwt.util";
-import { env } from "../utils/environment";
+import { RefreshTokenService } from "../services/tokens.service";
+import { buildRefreshTokenCookie, sendAuthCookies } from "../utils/cookies.util";
 
 export async function AuthController(app: FastifyInstance): Promise<void> {
     const authService = new AuthService();
 
     app.post("/register", {
         schema: { body: registerSchema },
-        onError: (_request, rep, error: FastifyError) => {
+        errorHandler: (error, _req, rep) => {
             rep.status(400).send({ error: error.message });
         },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
@@ -36,21 +37,8 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
                 authProvider: registeredUser.authProvider,
                 isVerified: registeredUser.isVerified
             };
-            const token: string = generateJWT(app, returnedValue, env.JWT_EXPIRE_TIME);
-            const refreshToken = generateJWT(app, { id: registeredUser.id }, "30d");
 
-            rep.setCookie("auth_token", token, {
-                httpOnly: true,
-                secure: env.ENVIRONMENT === "PRODUCTION",
-                sameSite: "strict",
-                path: "/"
-            });
-            rep.setCookie("refresh_token", refreshToken, {
-                httpOnly: true,
-                secure: env.ENVIRONMENT === "PRODUCTION",
-                sameSite: "strict",
-                path: "/refresh"
-            });
+            sendAuthCookies(await RefreshTokenService.createRefreshToken(registeredUser.id), generateJWT(app, returnedValue, "10min"), rep);
 
             rep.send({ user: returnedValue });
         }
@@ -58,7 +46,18 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
 
     app.post("/login", () => {}); //Connexion et génération d’un token (JWT)
     app.post("/logout", () => {}); //Déconnexion et invalidation du token
-    app.post("/refresh-token", () => {}); //Rafraîchissement du token d'accès
+    app.post("/refresh-token", {
+        errorHandler: (error, _req, rep) => {
+            rep.status(400).send({ error: error.message });
+        },
+        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            const refreshToken: string | null = req.cookies["refresh_token"] || null;
+            if (!refreshToken) throw new Error("Refresh token is missing");
+
+            buildRefreshTokenCookie(await RefreshTokenService.updateToken(refreshToken), rep, true);
+            rep.send({ message: "The token refresh_token has been updated" });
+        }
+    }); //Rafraîchissement du token d'accès
     app.post("/forgot-password", () => {}); //Demande de réinitialisation de mot de passe
     app.post("/reset-password", () => {}); //Réinitialisation du mot de passe via un lien/token
 

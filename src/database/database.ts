@@ -3,7 +3,7 @@ import sqlite3, { Database } from "sqlite3";
 import { FastifyInstance } from "fastify";
 import fs from "fs";
 import { createUsersTable } from "./repositories/user.repository";
-import { createRefreshTokensTable } from "./repositories/tokens.repository";
+import { createTokensTable } from "./repositories/tokens.repository";
 
 function buildFactory(app: FastifyInstance): Factory<sqlite3.Database> {
     return {
@@ -42,15 +42,25 @@ export let dbPool: Pool<Database>;
 
 export async function createDatabase(app: FastifyInstance): Promise<void> {
     try {
-        app.log.info("Creating database file...");
-        fs.mkdirSync("./data", { recursive: true });
-        fs.createWriteStream("./data/auth_database.db").end();
-        app.log.info("Database file created successfully !");
+        if (!fs.existsSync("./data/auth_database.db")) {
+            app.log.info("Creating database file...");
+            fs.mkdirSync("./data", { recursive: true });
+            fs.createWriteStream("./data/auth_database.db").end();
+            app.log.info("Database file created successfully !");
+        }
         dbPool = getPool(app);
+        app.log.info("Creating database tables...");
+        app.log.info("   Creating users table...");
         await createUsersTable();
-        app.log.info("Users table created successfully");
-        await createRefreshTokensTable();
-        app.log.info("Refresh tokens table created successfully");
+        app.log.info("   Users table created successfully");
+
+        app.log.info("   Creating refresh tokens table...");
+        await createTokensTable();
+        app.log.info("   Refresh tokens table created successfully");
+
+        app.log.info("Flushing old refresh tokens...");
+        //TODO: Implement the flushOldTokens function in the tokens.repository.ts file
+        app.log.info("Old refresh tokens flushed successfully !\n");
     } catch (error) {
         app.log.error("An error occurred while creating the database");
         return Promise.reject(error);

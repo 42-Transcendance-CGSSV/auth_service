@@ -4,7 +4,8 @@ import { registerRoutes } from "./routes/auth.routes";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
 import { env } from "./utils/environment";
-import { createDatabase } from "./database/database";
+import { createDatabase, dbPool } from "./database/database";
+import { getTimestamp } from "./utils/timestamp.util";
 
 const app = fastify({
     logger: {
@@ -35,14 +36,21 @@ const app = fastify({
             return `,"time":"${logTime}"`;
         }
     },
-    disableRequestLogging: false
+    disableRequestLogging: true
 });
 dotenv.config();
 
 const listeners: string[] = ["SIGINT", "SIGTERM"];
 listeners.forEach((signal): void => {
     process.on(signal, async () => {
+        console.log("");
+        app.log.info(`Received ${signal}. Closing server...`);
         await app.close();
+        app.log.info("Server closed !");
+        app.log.info("Clearing database connection pool...");
+        await dbPool.clear();
+        app.log.info("Database connection pool cleared !");
+        app.log.info("Exiting process...");
         process.exit(0);
     });
 });
@@ -63,6 +71,7 @@ async function start(): Promise<void> {
     });
 }
 
+const startTime: number = getTimestamp();
 createDatabase(app)
     .then(async () => {
         await registerRoutes(app);
@@ -70,6 +79,8 @@ createDatabase(app)
             response.send({ message: "Success" });
         });
         await start();
+        const endTime: number = getTimestamp();
+        app.log.info("Server started successfully ( " + (endTime - startTime) + "ms )");
     })
     .catch((error) => {
         app.log.fatal("An error occurred while starting the server");
