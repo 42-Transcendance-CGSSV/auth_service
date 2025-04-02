@@ -3,19 +3,21 @@ export interface IUser {
     name: string;
     email: string;
     createdAt: number;
-    isVerified: boolean;
-    authProvider: AuthProvider;
+    verified: boolean;
+    authProvider: string; //LOCAL or EXTERNAL
 }
 
-export enum AuthProvider {
-    LOCAL,
-    EXTERNAL
+export interface IPublicUser {
+    id: number;
+    name: string;
+    authProvider: string; //LOCAL or EXTERNAL
+    verified: boolean;
 }
 
 export interface ILocalUser extends IUser {
-    passwordHash: string;
+    password: string;
 }
 
 export interface IExternalUser extends IUser {
-    externalProviderId: string;
+    externalToken: string;
 }

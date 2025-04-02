@@ -1,11 +1,14 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
-import { registerRoutes } from "./routes/auth.routes";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
 import { env } from "./utils/environment";
 import { createDatabase, dbPool } from "./database/database";
 import { getTimestamp } from "./utils/timestamp.util";
+import { IErrorResponse } from "./interfaces/response.interface";
+import { ApiError } from "./utils/errors.util";
+import { AuthController } from "./controllers/auth.controller";
+import { TokenController } from "./controllers/token.controller";
 
 const app = fastify({
     logger: {
@@ -58,11 +61,25 @@ listeners.forEach((signal): void => {
 async function start(): Promise<void> {
     app.register(fastifyCookie);
     app.register(fastifyJwt, {
-        secret: env.JWT_SECRET as string,
-        cookie: {
-            cookieName: "token",
-            signed: false
+        secret: env.JWT_SECRET as string
+    });
+
+    app.setErrorHandler((error, _request, reply) => {
+        if (error.name === "ApiError") {
+            reply.code((error as ApiError).getHttpStatusCode()).send({
+                success: false,
+                errorCode: error.code,
+                message: error.message
+            } as IErrorResponse);
+            return;
         }
+
+        const statusCode = error.statusCode || 500;
+        reply.status(statusCode).send({
+            success: false,
+            message: error.message,
+            errorCode: error.code || "INTERNAL_SERVER_ERROR"
+        } as IErrorResponse);
     });
 
     await app.listen({
@@ -74,7 +91,8 @@ async function start(): Promise<void> {
 const startTime: number = getTimestamp();
 createDatabase(app)
     .then(async () => {
-        await registerRoutes(app);
+        await AuthController(app);
+        await TokenController(app);
         app.get("/healthcheck", (_req, response) => {
             response.send({ message: "Success" });
         });

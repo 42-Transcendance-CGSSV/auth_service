@@ -1,8 +1,9 @@
 import RefreshToken from "../classes/RefreshToken";
 import { getUserById } from "../database/repositories/user.repository";
 import * as tokenRepository from "../database/repositories/tokens.repository";
-import { addDays, getTimestamp } from "../utils/timestamp.util";
 import { getToken } from "../database/repositories/tokens.repository";
+import { addDays, getTimestamp } from "../utils/timestamp.util";
+import { ApiError, ApiErrorCode } from "../utils/errors.util";
 
 export class RefreshTokenService {
     public static async createRefreshToken(userId: number): Promise<RefreshToken> {
@@ -17,12 +18,13 @@ export class RefreshTokenService {
     }
 
     public static async updateToken(token: string): Promise<RefreshToken> {
+        if (!token || typeof token === "undefined") throw new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Le token ne peut etre undefined !");
+
         const refreshToken = await getToken(token);
-        if (!token || typeof token === "undefined") throw new Error("Refresh Token not found");
-        if (refreshToken.isExpired) throw new Error("Token is expired");
+        if (refreshToken.isExpired) throw new ApiError(ApiErrorCode.EXPIRED_TOKEN, "Le token est expire");
 
         const user = await getUserById(refreshToken.getUserId);
-        if (!user) throw new Error("User not found");
+        if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Cet utilisateur n'existe pas !");
         await this.revokeToken(refreshToken.getToken);
         const newToken = RefreshToken.generateToken(user.id, addDays(getTimestamp(), 30));
         await tokenRepository.insertToken(newToken);

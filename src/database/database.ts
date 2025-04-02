@@ -4,6 +4,7 @@ import { FastifyInstance } from "fastify";
 import fs from "fs";
 import { createUsersTable } from "./repositories/user.repository";
 import { createTokensTable } from "./repositories/tokens.repository";
+import { createVerificationTokenTable } from "./repositories/verification.repository";
 
 function buildFactory(app: FastifyInstance): Factory<sqlite3.Database> {
     return {
@@ -52,11 +53,15 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
         app.log.info("Creating database tables...");
         app.log.info("   Creating users table...");
         await createUsersTable();
-        app.log.info("   Users table created successfully");
+        app.log.info("   Users table created successfully !");
 
         app.log.info("   Creating refresh tokens table...");
         await createTokensTable();
-        app.log.info("   Refresh tokens table created successfully");
+        app.log.info("   Refresh tokens table created successfully !");
+
+        app.log.info("   Creating verifications tokens table...");
+        await createVerificationTokenTable();
+        app.log.info("   Verifications table created successfully !");
 
         app.log.info("Flushing old refresh tokens...");
         //TODO: Implement the flushOldTokens function in the tokens.repository.ts file

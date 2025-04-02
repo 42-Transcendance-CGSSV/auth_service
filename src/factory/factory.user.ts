@@ -1,28 +1,13 @@
-import { IExternalUser, ILocalUser, AuthProvider } from "../interfaces/user.interface";
+import LocalUser from "../classes/LocalUser";
+import ExternalUser from "../classes/ExternalUser";
 
 class FactoryUser {
-    public static createLocalUser(name: string, email: string, passwordHash: string): ILocalUser {
-        return {
-            id: -1,
-            name,
-            email,
-            passwordHash,
-            createdAt: Date.now(),
-            isVerified: false,
-            authProvider: AuthProvider.LOCAL
-        };
+    public static createLocalUser(name: string, email: string, password: string): LocalUser {
+        return new LocalUser(name, email, password);
     }
 
-    public static createGoogleUser(name: string, email: string, externalProviderId: string): IExternalUser {
-        return {
-            id: -1,
-            name,
-            email,
-            externalProviderId,
-            createdAt: Date.now(),
-            isVerified: true,
-            authProvider: AuthProvider.EXTERNAL
-        };
+    public static createExternalUser(name: string, email: string, externalProviderId: string): ExternalUser {
+        return new ExternalUser(name, email, externalProviderId);
     }
 }
 

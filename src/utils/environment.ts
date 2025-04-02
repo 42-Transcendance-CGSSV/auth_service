@@ -6,5 +6,6 @@ export const env = {
     DB_PATH: process.env.DB_PATH || "./data/auth_database.db",
     DB_TOKENS_TABLE: process.env.DB_TOKENS_TABLE || "tokens",
     DB_USERS_TABLE: process.env.DB_USERS_TABLE || "users",
+    DB_VERIFICATIONS_TABLE: process.env.DB_TOKENS_TABLE || "verifications",
     JWT_SECRET: process.env.JWT_SECRET || "default_secret"
 };
