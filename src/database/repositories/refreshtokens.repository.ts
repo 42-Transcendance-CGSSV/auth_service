@@ -2,8 +2,9 @@ import { dbPool } from "../database";
 import { env } from "../../utils/environment";
 import RefreshToken from "../../classes/RefreshToken";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
+import { FastifyInstance } from "fastify";
 
-export async function createTokensTable(): Promise<void> {
+export async function createTokensTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
         CREATE TABLE IF NOT EXISTS ${env.DB_TOKENS_TABLE} 
@@ -27,7 +28,7 @@ export async function createTokensTable(): Promise<void> {
             });
         });
     } catch (error) {
-        console.error("Error creating refresh tokens table:", error);
+        app.log.error("Error creating refresh tokens table:", error);
         throw error;
     }
 }

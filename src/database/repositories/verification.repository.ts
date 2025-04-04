@@ -1,8 +1,9 @@
 import { dbPool } from "../database";
 import { env } from "../../utils/environment";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
+import { FastifyInstance } from "fastify";
 
-export async function createVerificationTokenTable(): Promise<void> {
+export async function createVerificationTokenTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
         CREATE TABLE IF NOT EXISTS ${env.DB_VERIFICATIONS_TABLE} 
@@ -26,7 +27,7 @@ export async function createVerificationTokenTable(): Promise<void> {
             });
         });
     } catch (error) {
-        console.error("Error creating verifications table:", error);
+        app.log.error("Error creating verifications table:", error);
         throw error;
     }
 }
@@ -66,8 +67,9 @@ export async function getVerificationToken(userId: number): Promise<string> {
                 return;
             }
             const typedRow = row as unknown as { verification_token: string };
-            if (!typedRow || !("verification_token" in typedRow))
+            if (!typedRow || !("verification_token" in typedRow)) {
                 reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
+            }
 
             resolve(typedRow.verification_token);
         });

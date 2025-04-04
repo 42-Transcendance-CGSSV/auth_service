@@ -46,7 +46,6 @@ dotenv.config();
 const listeners: string[] = ["SIGINT", "SIGTERM"];
 listeners.forEach((signal): void => {
     process.on(signal, async () => {
-        console.log("");
         app.log.info(`Received ${signal}. Closing server...`);
         await app.close();
         app.log.info("Server closed !");

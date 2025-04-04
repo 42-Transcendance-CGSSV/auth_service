@@ -6,8 +6,8 @@ import { activateUser } from "../database/repositories/user.repository";
 
 export class VerificationService {
     public static async sendVerificationToken(userId: number): Promise<void> {
-        const token: string = await this.createVerificationToken(userId);
-        console.log(token);
+        await this.createVerificationToken(userId);
+        //TODO: send email !
     }
 
     public static async createVerificationToken(userId: number): Promise<string> {

@@ -18,15 +18,11 @@ export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IP
 
         try {
             app.jwt.verify<IPublicUser>(token, (_err, payload) => {
-                // Payload manquant malgré l'absence d'erreur (cas rare)
                 if (!payload) {
-                    const noPayloadError = new Error("Token valide mais payload absent");
-                    console.error(noPayloadError);
-                    reject(new ApiError(ApiErrorCode.INVALID_TOKEN, noPayloadError.message));
+                    reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Token valide mais payload absent"));
                     return;
                 }
 
-                // Tout est bon, on résout avec le payload
                 resolve(payload);
             });
         } catch (error) {
