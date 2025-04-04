@@ -1,12 +1,12 @@
-FROM node:23.10-alpine
+FROM node:23.10.0
 LABEL authors="jbadaire"
-
-RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY entrypoint.sh /app/entrypoint.sh
-COPY node_modules /app/node_modules
+COPY output /app/compiled
+COPY package.json /app
+COPY package-lock.json /app
+RUN npm install
 
-ENTRYPOINT ["/bin/sh", "entrypoint.sh"]
+ENTRYPOINT ["node" ,"compiled/app.js"]
 #TODO: create a small image
