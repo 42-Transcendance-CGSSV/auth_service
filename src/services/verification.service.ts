@@ -7,7 +7,7 @@ import { activateUser } from "../database/repositories/user.repository";
 export class VerificationService {
     public static async sendVerificationToken(userId: number): Promise<void> {
         const token: string = await this.createVerificationToken(userId);
-        console.log("http://10.11.7.4:3000/activate-account?token=" + token);
+        console.log(token);
     }
 
     public static async createVerificationToken(userId: number): Promise<string> {
@@ -31,16 +31,15 @@ export class VerificationService {
 
             this.verificationTokenIsValid(token).then((result) => {
                 if (result) {
-                    deleteVerificationToken(token);
-                    try {
-                        activateUser(Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number);
-                    } catch {
-                        /* empty */
-                    }
-                    resolve();
-                    return;
+                    activateUser(Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number)
+                        .then(() => {
+                            deleteVerificationToken(token);
+                            resolve();
+                        })
+                        .catch(() => reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !")));
+                } else {
+                    reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !"));
                 }
-                reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !"));
             });
         });
     }
@@ -56,11 +55,11 @@ export class VerificationService {
         if (start !== end) return Promise.resolve(false);
         try {
             const userId = Number.parseInt(start, 10);
+            if (isNaN(userId)) return Promise.resolve(false);
             const dbToken: string = await getVerificationToken(userId);
-            if (dbToken === token) return Promise.resolve(true);
+            return Promise.resolve(dbToken === token);
         } catch {
             return Promise.resolve(false);
         }
-        return Promise.resolve(true);
     }
 }

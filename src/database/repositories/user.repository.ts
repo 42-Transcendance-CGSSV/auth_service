@@ -4,7 +4,7 @@ import { env } from "../../utils/environment";
 import LocalUser from "../../classes/LocalUser";
 import ExternalUser from "../../classes/ExternalUser";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
-import { camelCase, mapKeys } from "lodash";
+import { toCamelCase } from "../../utils/case.utils";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -96,7 +96,7 @@ export async function getUserByEmail(email: string): Promise<IUser> {
                         `Impossible de trouver un utilisateur ayant l'email ${email} dans la base de donnees !`
                     )
                 );
-            } else resolve(mapKeys(row, (_, key) => camelCase(key)) as unknown as IUser);
+            } else resolve(toCamelCase(row) as unknown as IUser);
         });
     });
 }
@@ -116,7 +116,7 @@ export async function getUserById(id: number): Promise<IUser> {
                         `Impossible de trouver un utilisateur ayant l'id ${id} dans la base de donnees !`
                     )
                 );
-            } else resolve(mapKeys(row, (_, key) => camelCase(key)) as unknown as IUser);
+            } else resolve(toCamelCase(row) as unknown as IUser);
         });
     });
 }
@@ -140,7 +140,7 @@ export async function updateUser(user: IUser): Promise<boolean> {
 }
 
 export async function activateUser(userId: number): Promise<void> {
-    const query = "UPDATE ${env.DB_USERS_TABLE} SET verified = 1 WHERE id = ?";
+    const query: string = `UPDATE ${env.DB_USERS_TABLE} SET verified = 1 WHERE id = ?`;
     const db = await dbPool.acquire();
 
     return new Promise<void>((resolve, reject) => {

@@ -2,13 +2,15 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { registerSchema } from "../schemas/register.schemas";
 import { loginSchema } from "../schemas/login.schema";
 import { AuthService } from "../services/auth.service";
-import { generateJWT } from "../utils/jwt.util";
+import { generateJWT, verifyJWT } from "../utils/jwt.util";
 import { RefreshTokenService } from "../services/tokens.service";
-import { buildRefreshTokenCookie, sendAuthCookies } from "../utils/cookies.util";
+import { sendAuthCookies } from "../utils/cookies.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { IPublicUser } from "../interfaces/user.interface";
 import { VerificationService } from "../services/verification.service";
+import RefreshToken from "../classes/RefreshToken";
+import { getUserById } from "../database/repositories/user.repository";
 
 export async function AuthController(app: FastifyInstance): Promise<void> {
     const authService = new AuthService();
@@ -17,7 +19,6 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
         schema: { body: registerSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
             const publicUser: IPublicUser = await authService.registerUser(req);
-            sendAuthCookies(await RefreshTokenService.createRefreshToken(publicUser.id), generateJWT(app, publicUser, "10m"), rep);
             await VerificationService.sendVerificationToken(publicUser.id);
             rep.send({
                 success: true,
@@ -30,11 +31,22 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
     app.post("/login", {
         schema: { body: loginSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            const publicUser: IPublicUser = await authService.loginLocalUser(req);
-            sendAuthCookies(await RefreshTokenService.createRefreshToken(publicUser.id), generateJWT(app, publicUser, "10m"), rep);
+            const publicUser: IPublicUser = await authService.loginLocalUser(req, app);
+            const jwt = generateJWT(app, publicUser, "5m");
+            const refreshToken: string | null = req.cookies["refresh_token"] || null;
+            let refreshTokenObj;
+            if (!refreshToken) {
+                refreshTokenObj = await RefreshTokenService.createRefreshToken(publicUser.id);
+            } else {
+                refreshTokenObj = await RefreshTokenService.updateToken(refreshToken);
+            }
+            sendAuthCookies(refreshTokenObj, jwt, rep);
             rep.send({
                 success: true,
-                data: publicUser,
+                data: {
+                    user_data: publicUser,
+                    token: jwt
+                },
                 message: "User logged"
             } as ISuccessResponse);
         }
@@ -42,24 +54,21 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
 
     app.post("/logout", {
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            await verifyJWT(app, req);
             const refreshToken: string | null = req.cookies["refresh_token"] || null;
-            const authToken: string | null = req.cookies["auth_token"] || null;
-            if (!authToken) {
-                throw new ApiError(ApiErrorCode.INSUFFICIENT_PERMISSIONS, "Vous devez etre connecte pour effectuer cette action !");
-            }
             if (refreshToken) {
                 try {
-                    await RefreshTokenService.revokeToken(refreshToken);
+                    RefreshTokenService.revokeToken(refreshToken);
+                    rep.clearCookie("refresh_token");
                 } catch {
-                    /* empty */
+                    app.log.info("Impossible de supprimer le refresh token");
                 }
-                rep.clearCookie("refresh_token");
+                rep.clearCookie("auth_token");
+                rep.send({
+                    success: true,
+                    message: "L'utilisateur a ete deconnecte"
+                } as ISuccessResponse);
             }
-            rep.clearCookie("auth_token");
-            rep.send({
-                success: true,
-                message: "L'utilisateur a ete deconnecte"
-            } as ISuccessResponse);
         }
     }); //Déconnexion et invalidation du token
 
@@ -69,10 +78,23 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
             if (!refreshToken) {
                 throw new ApiError(ApiErrorCode.MISSING_REFRESH_COOKIE, "Vous devez envoyer le cookie contenant le refresh token");
             }
+
+            if (!(await RefreshTokenService.isTokenValid(refreshToken))) {
+                throw new ApiError(ApiErrorCode.EXPIRED_TOKEN, "Le refresh token est invalide ou a expire");
+            }
+
             rep.clearCookie("refresh_token");
-            buildRefreshTokenCookie(await RefreshTokenService.updateToken(refreshToken), rep, true);
+            rep.clearCookie("auth_token");
+
+            const updatedToken: RefreshToken = await RefreshTokenService.updateToken(refreshToken);
+            const publicUser: IPublicUser = await getUserById(updatedToken.getUserId);
+            const jwt: string = generateJWT(app, publicUser, "5m");
+            sendAuthCookies(updatedToken, jwt, rep);
             rep.send({
                 success: true,
+                data: {
+                    token: jwt
+                },
                 message: "Refresh Token updated !"
             } as ISuccessResponse);
         }
@@ -87,7 +109,7 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
             } as ISuccessResponse);
         }
     });
-    app.post("/forgot-password", () => {}); //Demande de réinitialisation de mot de passe
+    //app.post("/forgot-password", () => {}); //Demande de réinitialisation de mot de passe
 
     app.log.info("Auth routes registered");
 }

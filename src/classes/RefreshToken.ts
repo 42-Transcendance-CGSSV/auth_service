@@ -2,20 +2,20 @@ import { generateUUID } from "../utils/uuid.util";
 import { getTimestamp } from "../utils/timestamp.util";
 
 class RefreshToken {
-    private token: string;
-    private readonly _userId: number;
-    private readonly _createdAt: number;
-    private readonly _expiresAt: number;
+    private readonly token: string;
+    private readonly userId: number;
+    private readonly createdAt: number;
+    private readonly expiresAt: number;
 
     public constructor(userId: number, token: string, createdAt: number, expiresAt: number) {
-        this._userId = userId;
+        this.userId = userId;
         this.token = token;
-        this._createdAt = createdAt;
-        this._expiresAt = expiresAt;
+        this.createdAt = createdAt;
+        this.expiresAt = expiresAt;
     }
 
     public get getUserId(): number {
-        return this._userId;
+        return this.userId;
     }
 
     public get getToken(): string {
@@ -23,15 +23,15 @@ class RefreshToken {
     }
 
     public get getCreatedAt(): number {
-        return this._createdAt;
+        return this.createdAt;
     }
 
     public get getExpireAt(): number {
-        return this._expiresAt;
+        return this.expiresAt;
     }
 
     public get isExpired(): boolean {
-        return this._expiresAt < getTimestamp();
+        return this.expiresAt < getTimestamp();
     }
 
     public static generateToken(userId: number, expireAt: number): RefreshToken {

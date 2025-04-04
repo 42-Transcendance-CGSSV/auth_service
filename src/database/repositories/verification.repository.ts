@@ -58,27 +58,28 @@ export async function getVerificationToken(userId: number): Promise<string> {
             dbPool.release(db);
             if (err) {
                 reject(err);
-            } else {
-                resolve(row[0]);
+                return;
             }
+
+            if (!row || typeof row === "undefined") {
+                reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
+                return;
+            }
+            const typedRow = row as unknown as { verification_token: string };
+            if (!typedRow || !("verification_token" in typedRow))
+                reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
+
+            resolve(typedRow.verification_token);
         });
     });
 }
 
-export async function deleteVerificationToken(token: string): Promise<boolean> {
+export async function deleteVerificationToken(token: string): Promise<void> {
     const query = `DELETE
-                   FROM ${env.DB_TOKENS_TABLE}
+                   FROM ${env.DB_VERIFICATIONS_TABLE}
                    WHERE verification_token = ?`;
 
     const db = await dbPool.acquire();
-    return new Promise<boolean>((resolve, reject) => {
-        db.run(query, [token], function (err) {
-            dbPool.release(db);
-            if (err) {
-                reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token !"));
-            } else {
-                resolve(this.changes > 0);
-            }
-        });
-    });
+    db.run(query, [token]);
+    dbPool.release(db);
 }

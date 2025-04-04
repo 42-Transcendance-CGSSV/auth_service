@@ -9,8 +9,8 @@ export async function createTokensTable(): Promise<void> {
         CREATE TABLE IF NOT EXISTS ${env.DB_TOKENS_TABLE} 
         (
             token_id INTEGER UNIQUE PRIMARY KEY,
-            user_id INTEGER NOT NULL UNIQUE, 
-            token TEXT NOT NULL UNIQUE, 
+            user_id INTEGER NOT NULL, 
+            token VARCHAR(36) NOT NULL UNIQUE, 
             expires_at INTEGER NOT NULL,
             created_at INTEGER NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -45,18 +45,6 @@ export async function insertToken(token: RefreshToken): Promise<void> {
     });
 }
 
-export async function getTokenByUserId(userId: number): Promise<RefreshToken> {
-    const query = `SELECT * FROM ${env.DB_TOKENS_TABLE} WHERE user_id = ?`;
-    const db = await dbPool.acquire();
-    return new Promise<RefreshToken>((resolve, reject) => {
-        db.get<RefreshToken>(query, [userId], (err, row) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-}
-
 export async function getToken(token: string): Promise<RefreshToken> {
     const query = `SELECT * FROM ${env.DB_TOKENS_TABLE} WHERE token = ?`;
     const db = await dbPool.acquire();
@@ -71,6 +59,18 @@ export async function getToken(token: string): Promise<RefreshToken> {
             }
             const refreshToken = new RefreshToken(typedRow.user_id, typedRow.token, typedRow.created_at, typedRow.expires_at);
             resolve(refreshToken);
+        });
+    });
+}
+
+export async function evictExpiredTokens(): Promise<void> {
+    const query = `DELETE FROM ${env.DB_TOKENS_TABLE} WHERE strftime('%s', 'now') > expires_at`;
+    const db = await dbPool.acquire();
+    return new Promise<void>((resolve, reject) => {
+        db.run(query, function (err) {
+            dbPool.release(db);
+            if (err) reject(new ApiError(ApiErrorCode.DATABASE_ERROR, "Unable to evict expired tokens !"));
+            resolve();
         });
     });
 }

@@ -3,7 +3,7 @@ import sqlite3, { Database } from "sqlite3";
 import { FastifyInstance } from "fastify";
 import fs from "fs";
 import { createUsersTable } from "./repositories/user.repository";
-import { createTokensTable } from "./repositories/tokens.repository";
+import { createTokensTable, evictExpiredTokens } from "./repositories/refreshtokens.repository";
 import { createVerificationTokenTable } from "./repositories/verification.repository";
 
 function buildFactory(app: FastifyInstance): Factory<sqlite3.Database> {
@@ -63,9 +63,11 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
         await createVerificationTokenTable();
         app.log.info("   Verifications table created successfully !");
 
-        app.log.info("Flushing old refresh tokens...");
-        //TODO: Implement the flushOldTokens function in the tokens.repository.ts file
-        app.log.info("Old refresh tokens flushed successfully !\n");
+        setInterval(async () => {
+            app.log.info("Flushing old refresh tokens...");
+            await evictExpiredTokens();
+            app.log.info("Old refresh tokens flushed successfully !\n");
+        }, 1000 * 60);
     } catch (error) {
         app.log.error("An error occurred while creating the database");
         return Promise.reject(error);

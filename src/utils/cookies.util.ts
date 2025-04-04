@@ -23,7 +23,7 @@ export function buildJwtCookie(jwt: string, rep: FastifyReply, headerAdding: boo
             httpOnly: env.ENVIRONMENT === "PRODUCTION",
             secure: process.env.NODE_ENV === "PRODUCTION",
             sameSite: "strict",
-            maxAge: addMinutes(getTimestamp(), 15),
+            maxAge: addMinutes(getTimestamp(), 60),
             path: "/"
         }
     });
