@@ -21,7 +21,7 @@ export function buildJwtCookie(jwt: string, rep: FastifyReply, headerAdding: boo
         cookieValue: jwt,
         options: {
             httpOnly: env.ENVIRONMENT === "PRODUCTION",
-            secure: process.env.NODE_ENV === "PRODUCTION",
+            secure: env.ENVIRONMENT === "PRODUCTION",
             sameSite: "strict",
             maxAge: addMinutes(getTimestamp(), 60),
             path: "/"
@@ -40,7 +40,7 @@ export function buildRefreshTokenCookie(refreshToken: RefreshToken, rep: Fastify
         cookieValue: refreshToken.getToken,
         options: {
             httpOnly: env.ENVIRONMENT === "PRODUCTION",
-            secure: process.env.NODE_ENV === "PRODUCTION",
+            secure: env.ENVIRONMENT === "PRODUCTION",
             sameSite: "strict",
             maxAge: addDays(getTimestamp(), 30),
             path: "/refresh"
@@ -52,6 +52,28 @@ export function buildRefreshTokenCookie(refreshToken: RefreshToken, rep: Fastify
 
 function buildCookies(cookies: cookieInterface[]): string[] {
     return cookies.map((cookie) => {
-        return `${cookie.cookieName}=${cookie.cookieValue}; `;
+        let cookieString = `${cookie.cookieName}=${cookie.cookieValue}`;
+
+        if (cookie.options.httpOnly) {
+            cookieString += "; HttpOnly";
+        }
+
+        if (cookie.options.secure) {
+            cookieString += "; Secure";
+        }
+
+        if (cookie.options.sameSite) {
+            cookieString += `; SameSite=${cookie.options.sameSite}`;
+        }
+
+        if (cookie.options.path) {
+            cookieString += `; Path=${cookie.options.path}`;
+        }
+
+        if (cookie.options.maxAge) {
+            cookieString += `; Max-Age=${cookie.options.maxAge}`;
+        }
+
+        return cookieString;
     });
 }
