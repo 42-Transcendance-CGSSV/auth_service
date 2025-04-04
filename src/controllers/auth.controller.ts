@@ -44,6 +44,7 @@ export async function AuthController(app: FastifyInstance): Promise<void> {
             rep.send({
                 success: true,
                 data: {
+                    // eslint-disable-next-line camelcase
                     user_data: publicUser,
                     token: jwt
                 },
