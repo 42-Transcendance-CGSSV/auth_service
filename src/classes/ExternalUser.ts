@@ -1,4 +1,5 @@
 import { IExternalUser, IPublicUser } from "../interfaces/user.interface";
+import { getTimestamp } from "../utils/timestamp.util";
 
 export class ExternalUser implements IExternalUser {
     private _id: number;
@@ -15,7 +16,7 @@ export class ExternalUser implements IExternalUser {
         this._email = email;
         this._externalToken = externalToken;
         this._authProvider = "EXTERNAL";
-        this._createdAt = Date.now();
+        this._createdAt = getTimestamp();
         this._verified = true;
     }
 

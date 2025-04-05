@@ -2,10 +2,11 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { IPublicUser } from "../interfaces/user.interface";
 import { ApiError, ApiErrorCode } from "./errors.util";
 import { TokenError } from "fast-jwt";
+import { getTimestamp } from "./timestamp.util";
 
 export function generateJWT(app: FastifyInstance, payload: IPublicUser, expireTime: string): string {
     return app.jwt.sign(payload, {
-        clockTimestamp: Date.now(),
+        clockTimestamp: getTimestamp(),
         expiresIn: expireTime
     });
 }

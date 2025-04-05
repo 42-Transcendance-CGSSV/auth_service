@@ -1,6 +1,7 @@
 import { dbPool } from "../database";
 import { env } from "../../utils/environment";
 import { FastifyInstance } from "fastify";
+import { getTimestamp } from "../../utils/timestamp.util";
 
 export async function createPicturesTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
@@ -30,7 +31,7 @@ export async function updatePicturePath(userId: number, picturePath: string): Pr
     const query = `REPLACE INTO ${env.DB_PICTURES_TABLES} (user_id, picture_path, changed_at) VALUES (?, ?, ?)`;
 
     const db = await dbPool.acquire();
-    db.run(query, [userId, picturePath], function (err) {
+    db.run(query, [userId, picturePath, getTimestamp()], function (err) {
         dbPool.release(db);
         if (err) throw err;
     });

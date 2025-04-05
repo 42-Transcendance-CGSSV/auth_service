@@ -23,9 +23,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
                     fileSize: 5242880
                 }
             });
-
             await changeAccountPicture(data, req.publicUser.id);
-
             return rep.send({
                 success: true,
                 message: "Le fichier a bien ete enregistre "

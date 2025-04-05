@@ -4,7 +4,6 @@ import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { FastifyRequest } from "fastify";
 import { activateUser } from "../database/repositories/user.repository";
 import { MultipartFile } from "@fastify/multipart";
-import { pipeline } from "stream";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 
@@ -71,7 +70,7 @@ export async function changeAccountPicture(multipart: MultipartFile | undefined,
     }
 
     if (!acceptedMimeTypes.includes(multipart.mimetype)) {
-        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Le type de fichier n'est pas valide");
+        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Ce format de fichier n'est pas pris en charge pour les photos de profil.");
     }
 
     let hasGoodExtension: boolean = false;
@@ -83,12 +82,17 @@ export async function changeAccountPicture(multipart: MultipartFile | undefined,
     }
 
     if (!hasGoodExtension) {
-        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Le type de fichier n'est pas valide");
+        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Ce format de fichier n'est pas pris en charge pour les photos de profil.");
     }
 
     const path: string = "./data/static/profiles_pictures/uploads/" + generateUUID() + "." + multipart.filename.split(".")[1];
-    pipeline(multipart.file, fs.createWriteStream(path));
+    const buffer: Buffer<ArrayBufferLike> = await multipart.toBuffer();
 
-    //TODO: update the user_id with an real id
+    /*
+    TODO: check if the image is really an image
+    https://en.wikipedia.org/wiki/List_of_file_signatures 
+     */
+    fs.writeFileSync(path, buffer);
+
     await updatePicturePath(userId, path);
 }
