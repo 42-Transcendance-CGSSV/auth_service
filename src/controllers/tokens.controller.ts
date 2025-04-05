@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { generateJWT, verifyJWT } from "../utils/jwt.util";
+import { generateJWT } from "../utils/jwt.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { IPublicUser } from "../interfaces/user.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
@@ -10,12 +10,11 @@ import { isTokenValid, updateToken } from "../services/tokens.service";
 
 export async function registerTokensRoutes(app: FastifyInstance): Promise<void> {
     app.get("/token/decode", {
-        handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            // eslint-disable-next-line no-useless-catch
-            const user: IPublicUser = await verifyJWT(app, req);
+        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
+            if (!req.publicUser) return;
             return rep.send({
                 success: true,
-                data: user,
+                data: req.publicUser,
                 message: "Ce token est valide, les informations contenues dedans ont été décodées !"
             } as ISuccessResponse);
         }

@@ -1,6 +1,13 @@
 import AMiddleware from "../classes/abstracts/AMiddleware";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { verifyJWT } from "../utils/jwt.util";
+import { IPublicUser } from "../interfaces/user.interface";
+
+declare module "fastify" {
+    interface FastifyRequest {
+        publicUser?: IPublicUser;
+    }
+}
 
 class AuthenticationMiddleware extends AMiddleware {
     public constructor() {
@@ -10,9 +17,10 @@ class AuthenticationMiddleware extends AMiddleware {
 
     public async handleRequest(app: FastifyInstance, request: FastifyRequest, _response: FastifyReply): Promise<boolean> {
         try {
-            await verifyJWT(app, request);
+            request.publicUser = await verifyJWT(app, request);
             return true;
         } catch {
+            request.publicUser = undefined;
             return false;
         }
     }

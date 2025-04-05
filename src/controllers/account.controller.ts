@@ -1,7 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { activateAccount, changeAccountPicture } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
-import { verifyJWT } from "../utils/jwt.util";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.post("/activate-account", {
@@ -15,7 +14,9 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     });
 
     app.post("/upload-picture", {
-        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
+            if (!req.publicUser) return;
+
             const data = await req.file({
                 limits: {
                     files: 1,
@@ -23,7 +24,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
                 }
             });
 
-            await changeAccountPicture(data, (await verifyJWT(app, req)).id);
+            await changeAccountPicture(data, req.publicUser.id);
 
             return rep.send({
                 success: true,
