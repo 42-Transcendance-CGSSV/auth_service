@@ -12,7 +12,11 @@ declare module "fastify" {
 class AuthenticationMiddleware extends AMiddleware {
     public constructor() {
         super();
-        this.addRoute("/logout").addRoute("/token/decode").addRoute("/token/validate").addRoute("/upload-picture");
+        this.addRoute("/logout")
+            .addRoute("/token/decode")
+            .addRoute("/token/validate")
+            .addRoute("/upload-picture")
+            .addRoute("/update-account");
     }
 
     public async handleRequest(app: FastifyInstance, request: FastifyRequest, _response: FastifyReply): Promise<boolean> {

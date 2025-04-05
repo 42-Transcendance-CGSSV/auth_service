@@ -1,17 +1,13 @@
-export interface IUser {
-    id: number;
-    name: string;
-    email: string;
-    createdAt: number;
-    verified: boolean;
-    authProvider: string; //LOCAL or EXTERNAL
-}
-
 export interface IPublicUser {
     id: number;
     name: string;
-    authProvider: string; //LOCAL or EXTERNAL
+    authProvider: "LOCAL" | "EXTERNAL";
     verified: boolean;
+}
+
+export interface IUser extends IPublicUser {
+    email: string;
+    createdAt: number;
 }
 
 export interface ILocalUser extends IUser {

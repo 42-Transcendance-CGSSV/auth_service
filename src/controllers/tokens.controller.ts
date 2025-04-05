@@ -44,8 +44,8 @@ export async function registerTokensRoutes(app: FastifyInstance): Promise<void> 
             rep.clearCookie("auth_token");
 
             const updatedToken: RefreshToken = await updateToken(refreshToken);
-            const publicUser: IPublicUser = await getUserById(updatedToken.getUserId);
-            const jwt: string = generateJWT(app, publicUser, "5m");
+            const fetchedUser: IPublicUser = (await getUserById(updatedToken.getUserId)) as IPublicUser;
+            const jwt: string = generateJWT(app, fetchedUser, "5m");
             sendAuthCookies(updatedToken, jwt, rep);
             rep.send({
                 success: true,
