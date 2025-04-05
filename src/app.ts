@@ -2,13 +2,16 @@ import fastify from "fastify";
 import dotenv from "dotenv";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
+import fastifyMultipart from "@fastify/multipart";
 import { env } from "./utils/environment";
 import { createDatabase, dbPool } from "./database/database";
 import { getTimestamp } from "./utils/timestamp.util";
 import { IErrorResponse } from "./interfaces/response.interface";
 import { ApiError } from "./utils/errors.util";
-import { AuthController } from "./controllers/auth.controller";
-import { TokenController } from "./controllers/token.controller";
+import { registerAuthRoutes } from "./controllers/auth.controller";
+import { registerTokensRoutes } from "./controllers/tokens.controller";
+import AuthenticationMiddleware from "./middlewares/authentication.middleware";
+import { registerAccountRoutes } from "./controllers/account.controller";
 
 const app = fastify({
     logger: {
@@ -59,6 +62,7 @@ listeners.forEach((signal): void => {
 
 async function start(): Promise<void> {
     app.register(fastifyCookie);
+    app.register(fastifyMultipart);
     app.register(fastifyJwt, {
         secret: env.JWT_SECRET as string
     });
@@ -81,6 +85,8 @@ async function start(): Promise<void> {
         } as IErrorResponse);
     });
 
+    new AuthenticationMiddleware().register(app);
+
     await app.listen({
         port: Number(env.PORT),
         host: "0.0.0.0"
@@ -90,8 +96,9 @@ async function start(): Promise<void> {
 const startTime: number = getTimestamp();
 createDatabase(app)
     .then(async () => {
-        await AuthController(app);
-        await TokenController(app);
+        await registerAuthRoutes(app);
+        await registerTokensRoutes(app);
+        await registerAccountRoutes(app);
         app.get("/healthcheck", (_req, response) => {
             response.send({ message: "Success" });
         });

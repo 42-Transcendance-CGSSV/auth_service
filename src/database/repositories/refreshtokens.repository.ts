@@ -20,12 +20,9 @@ export async function createTokensTable(app: FastifyInstance): Promise<void> {
 
     try {
         const db = await dbPool.acquire();
-        await new Promise<void>((resolve, reject) => {
-            db.run(query, [], (err) => {
-                dbPool.release(db);
-                if (err) reject(err);
-                else resolve();
-            });
+        db.run(query, [], (err) => {
+            dbPool.release(db);
+            if (err) throw err;
         });
     } catch (error) {
         app.log.error("Error creating refresh tokens table:", error);
@@ -37,12 +34,9 @@ export async function insertToken(token: RefreshToken): Promise<void> {
     const query = `INSERT INTO ${env.DB_TOKENS_TABLE} (token_id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`;
 
     const db = await dbPool.acquire();
-    return new Promise<void>((resolve, reject) => {
-        db.run(query, [null, token.getUserId, token.getToken, token.getExpireAt, token.getCreatedAt], function (err) {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve();
-        });
+    db.run(query, [null, token.getUserId, token.getToken, token.getExpireAt, token.getCreatedAt], function (err) {
+        dbPool.release(db);
+        if (err) throw err;
     });
 }
 
@@ -67,12 +61,9 @@ export async function getToken(token: string): Promise<RefreshToken> {
 export async function evictExpiredTokens(): Promise<void> {
     const query = `DELETE FROM ${env.DB_TOKENS_TABLE} WHERE strftime('%s', 'now') > expires_at`;
     const db = await dbPool.acquire();
-    return new Promise<void>((resolve, reject) => {
-        db.run(query, function (err) {
-            dbPool.release(db);
-            if (err) reject(new ApiError(ApiErrorCode.DATABASE_ERROR, "Unable to evict expired tokens !"));
-            resolve();
-        });
+    db.run(query, function (err) {
+        dbPool.release(db);
+        if (err) throw new ApiError(ApiErrorCode.DATABASE_ERROR, "Unable to evict expired tokens !");
     });
 }
 

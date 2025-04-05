@@ -5,6 +5,7 @@ import fs from "fs";
 import { createUsersTable } from "./repositories/user.repository";
 import { createTokensTable, evictExpiredTokens } from "./repositories/refreshtokens.repository";
 import { createVerificationTokenTable } from "./repositories/verification.repository";
+import { createPicturesTable } from "./repositories/pictures.repository";
 
 function buildFactory(app: FastifyInstance): Factory<sqlite3.Database> {
     return {
@@ -49,19 +50,30 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
             fs.createWriteStream("./data/auth_database.db").end();
             app.log.info("Database file created successfully !");
         }
+
+        if (!fs.existsSync("./data/static/profiles_pictures")) {
+            app.log.info("Creating static directory for profile pictures...");
+            fs.mkdirSync("./data/static/profiles_pictures", { recursive: true });
+            app.log.info("Static directory for profile pictures created successfully !");
+        }
+
         dbPool = getPool(app);
         app.log.info("Creating database tables...");
         app.log.info("   Creating users table...");
         await createUsersTable();
         app.log.info("   Users table created successfully !");
 
-        app.log.info("   Creating refresh tokens table...");
-        await createTokensTable();
-        app.log.info("   Refresh tokens table created successfully !");
+        app.log.info("   Creating 'refresh tokens' table...");
+        await createTokensTable(app);
+        app.log.info("   'Refresh tokens' table created successfully !");
 
-        app.log.info("   Creating verifications tokens table...");
-        await createVerificationTokenTable();
-        app.log.info("   Verifications table created successfully !");
+        app.log.info("   Creating 'verifications tokens' table...");
+        await createVerificationTokenTable(app);
+        app.log.info("   'Verifications' table created successfully !");
+
+        app.log.info("   Creating 'pictures' table...");
+        await createPicturesTable(app);
+        app.log.info("   'Pictures' table created successfully !");
 
         setInterval(async () => {
             app.log.info("Flushing old refresh tokens...");

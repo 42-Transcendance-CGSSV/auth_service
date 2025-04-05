@@ -6,12 +6,8 @@ import cookieInterface from "../interfaces/cookie.interface";
 import CookieInterface from "../interfaces/cookie.interface";
 
 export function sendAuthCookies(refreshToken: RefreshToken, jwt: string, rep: FastifyReply): void {
-    const cookies: cookieInterface[] = [];
-
-    cookies.push(buildJwtCookie(jwt, rep, false));
-    cookies.push(buildRefreshTokenCookie(refreshToken, rep, false));
-
-    rep.header("set-cookie", buildCookies(cookies));
+    buildJwtCookie(jwt, rep, true);
+    buildRefreshTokenCookie(refreshToken, rep, true);
 }
 
 export function buildJwtCookie(jwt: string, rep: FastifyReply, headerAdding: boolean): CookieInterface {
@@ -41,16 +37,12 @@ export function buildRefreshTokenCookie(refreshToken: RefreshToken, rep: Fastify
             secure: env.ENVIRONMENT === "PRODUCTION",
             sameSite: "strict",
             maxAge: addDays(getTimestamp(), 30),
-            path: "/refresh"
+            path: "/token/refresh"
         }
     };
     const cookie: string = buildCookie(cookieType);
     if (headerAdding) rep.header("set-cookie", cookie);
     return cookieType;
-}
-
-function buildCookies(cookies: cookieInterface[]): string[] {
-    return cookies.map((cookie) => buildCookie(cookie));
 }
 
 function buildCookie(cookie: cookieInterface): string {

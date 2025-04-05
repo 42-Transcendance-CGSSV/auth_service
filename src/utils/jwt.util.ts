@@ -4,7 +4,10 @@ import { ApiError, ApiErrorCode } from "./errors.util";
 import { TokenError } from "fast-jwt";
 
 export function generateJWT(app: FastifyInstance, payload: IPublicUser, expireTime: string): string {
-    return app.jwt.sign(payload, { expiresIn: expireTime });
+    return app.jwt.sign(payload, {
+        clockTimestamp: Date.now(),
+        expiresIn: expireTime
+    });
 }
 
 export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IPublicUser> {

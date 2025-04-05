@@ -4,7 +4,7 @@ import { env } from "../../utils/environment";
 import LocalUser from "../../classes/LocalUser";
 import ExternalUser from "../../classes/ExternalUser";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
-import { toCamelCase } from "../../utils/case.utils";
+import { toCamelCase } from "../../utils/case.util";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -21,12 +21,9 @@ export async function createUsersTable(): Promise<void> {
         )`;
 
     const db = await dbPool.acquire();
-    await new Promise<void>((resolve, reject) => {
-        db.run(query, (err) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve();
-        });
+    db.run(query, (err) => {
+        dbPool.release(db);
+        if (err) throw new ApiError(ApiErrorCode.DATABASE_ERROR, err.message);
     });
 }
 
@@ -143,12 +140,9 @@ export async function activateUser(userId: number): Promise<void> {
     const query: string = `UPDATE ${env.DB_USERS_TABLE} SET verified = 1 WHERE id = ?`;
     const db = await dbPool.acquire();
 
-    return new Promise<void>((resolve, reject) => {
-        db.run(query, [userId], (err: Error | null) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve();
-        });
+    db.run(query, [userId], (err: Error | null) => {
+        dbPool.release(db);
+        if (err) throw err;
     });
 }
 

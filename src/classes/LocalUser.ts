@@ -7,7 +7,7 @@ export class LocalUser implements ILocalUser {
     private _email: string;
     private _createdAt: number;
     private _verified: boolean;
-    private _authProvider: string;
+    private _authProvider: "LOCAL" | "EXTERNAL";
     private _password: string;
 
     public constructor(name: string, email: string, password: string) {
@@ -60,11 +60,11 @@ export class LocalUser implements ILocalUser {
         this._verified = value;
     }
 
-    public get authProvider(): string {
+    public get authProvider(): "LOCAL" | "EXTERNAL" {
         return this._authProvider;
     }
 
-    public set authProvider(value: string) {
+    public set authProvider(value: "LOCAL" | "EXTERNAL") {
         this._authProvider = value;
     }
 
