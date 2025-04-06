@@ -24,6 +24,7 @@ export enum ApiErrorCode {
     INVALID_REQUEST_BODY = "INVALID_REQUEST_BODY",
     MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD",
     INVALID_FILE_TYPE = "INVALID_FILE_TYPE",
+    INVALID_FILE_SIZE = "INVALID_FILE_SIZE",
 
     // Erreurs serveur (500)
     INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR",
@@ -36,6 +37,7 @@ export const getHttpStatusCode = (errorCode: ApiErrorCode): number => {
         case ApiErrorCode.INVALID_REQUEST_BODY:
         case ApiErrorCode.MISSING_REQUIRED_FIELD:
         case ApiErrorCode.INVALID_FILE_TYPE:
+        case ApiErrorCode.INVALID_FILE_SIZE:
             return 400;
 
         // 401 - Unauthorized

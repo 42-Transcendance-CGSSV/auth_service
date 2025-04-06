@@ -6,6 +6,7 @@ import { activateUser } from "../database/repositories/user.repository";
 import { MultipartFile } from "@fastify/multipart";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
+import { isImage } from "../utils/file.util";
 
 export async function sendVerificationToken(userId: number): Promise<void> {
     await createVerificationToken(userId);
@@ -62,37 +63,26 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-const acceptedMimeTypes: string[] = ["image/png", "image/jpeg", "image/jpg", "image/gif"];
-
 export async function changeAccountPicture(multipart: MultipartFile | undefined, userId: number): Promise<void> {
     if (!multipart) {
         throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Aucun fichier n'a été envoyé");
     }
-
-    if (!acceptedMimeTypes.includes(multipart.mimetype)) {
-        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Ce format de fichier n'est pas pris en charge pour les photos de profil.");
-    }
-
-    let hasGoodExtension: boolean = false;
-    for (const accpetedMimeType of acceptedMimeTypes) {
-        if (accpetedMimeType.split("/")[1] === multipart.filename.split(".")[1]) {
-            hasGoodExtension = true;
-            break;
-        }
-    }
-
-    if (!hasGoodExtension) {
-        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Ce format de fichier n'est pas pris en charge pour les photos de profil.");
-    }
-
     const path: string = "./data/static/profiles_pictures/uploads/" + generateUUID() + "." + multipart.filename.split(".")[1];
-    const buffer: Buffer<ArrayBufferLike> = await multipart.toBuffer();
+    const buffer: Buffer<ArrayBuffer> = await multipart.toBuffer();
 
-    /*
-    TODO: check if the image is really an image
-    https://en.wikipedia.org/wiki/List_of_file_signatures 
-     */
-    fs.writeFileSync(path, buffer);
+    if (multipart.file.truncated) {
+        throw new ApiError(ApiErrorCode.INVALID_FILE_SIZE, "Ce fichier est trop lourd !");
+    }
 
-    await updatePicturePath(userId, path);
+    if (!isImage(multipart.filename.split(".")[1], multipart.mimetype, buffer)) {
+        throw new ApiError(ApiErrorCode.INVALID_FILE_TYPE, "Ce format de fichier n'est pas pris en charge pour les photos de profil.");
+    }
+
+    fs.writeFile(path, buffer, async (err) => {
+        if (!err) {
+            await updatePicturePath(userId, path);
+            return;
+        }
+        throw new ApiError(ApiErrorCode.DATABASE_ERROR, "Impossible de mettre a jour le chemin de la photo de profil.");
+    });
 }

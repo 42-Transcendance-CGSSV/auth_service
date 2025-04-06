@@ -20,7 +20,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
             const data = await req.file({
                 limits: {
                     files: 1,
-                    fileSize: 5242880
+                    fileSize: 1048576 * 3 // 3 Mo
                 }
             });
             await changeAccountPicture(data, req.publicUser.id);
