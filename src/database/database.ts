@@ -7,6 +7,8 @@ import { createTokensTable, evictExpiredTokens } from "./repositories/refreshtok
 import { createVerificationTokenTable } from "./repositories/verification.repository";
 import { createPicturesTable } from "./repositories/pictures.repository";
 
+export let vacuumOldTokens: NodeJS.Timeout | null = null;
+
 function buildFactory(app: FastifyInstance): Factory<sqlite3.Database> {
     return {
         create: (): any => {
@@ -51,9 +53,9 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
             app.log.info("Database file created successfully !");
         }
 
-        if (!fs.existsSync("./data/static/profiles_pictures")) {
+        if (!fs.existsSync("./data/static/profiles_pictures/uploads")) {
             app.log.info("Creating static directory for profile pictures...");
-            fs.mkdirSync("./data/static/profiles_pictures", { recursive: true });
+            fs.mkdirSync("./data/static/profiles_pictures/uploads", { recursive: true });
             app.log.info("Static directory for profile pictures created successfully !");
         }
 
@@ -75,7 +77,7 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
         await createPicturesTable(app);
         app.log.info("   'Pictures' table created successfully !");
 
-        setInterval(async () => {
+        vacuumOldTokens = setInterval(async () => {
             app.log.info("Flushing old refresh tokens...");
             await evictExpiredTokens();
             app.log.info("Old refresh tokens flushed successfully !\n");

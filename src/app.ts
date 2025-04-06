@@ -4,7 +4,7 @@ import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
 import fastifyMultipart from "@fastify/multipart";
 import { env } from "./utils/environment";
-import { createDatabase, dbPool } from "./database/database";
+import { createDatabase, dbPool, vacuumOldTokens } from "./database/database";
 import { getTimestamp } from "./utils/timestamp.util";
 import { IErrorResponse } from "./interfaces/response.interface";
 import { ApiError } from "./utils/errors.util";
@@ -12,6 +12,7 @@ import { registerAuthRoutes } from "./controllers/auth.controller";
 import { registerTokensRoutes } from "./controllers/tokens.controller";
 import AuthenticationMiddleware from "./middlewares/authentication.middleware";
 import { registerAccountRoutes } from "./controllers/account.controller";
+import { clearInterval } from "node:timers";
 
 const app = fastify({
     logger: {
@@ -49,7 +50,13 @@ dotenv.config();
 const listeners: string[] = ["SIGINT", "SIGTERM"];
 listeners.forEach((signal): void => {
     process.on(signal, async () => {
-        app.log.info(`Received ${signal}. Closing server...`);
+        app.log.info(`Received ${signal}. Shutting down gracefully...`);
+        if (vacuumOldTokens) {
+            app.log.info("Stopping vacuum task...");
+            clearInterval(vacuumOldTokens);
+            app.log.info("Vacuum task stopped !");
+        }
+        app.log.info("Closing server...");
         await app.close();
         app.log.info("Server closed !");
         app.log.info("Clearing database connection pool...");
