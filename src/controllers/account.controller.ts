@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { activateAccount, changeAccountPicture } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
+import { ApiError, ApiErrorCode } from "../utils/errors.util";
+import { getPicturePath } from "../database/repositories/pictures.repository";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.post("/activate-account", {
@@ -27,6 +29,25 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
             return rep.send({
                 success: true,
                 message: "Le fichier a bien ete enregistre "
+            } as ISuccessResponse);
+        }
+    });
+
+    app.get("/get-picture/:userId", {
+        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            if (!req.query) {
+                throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un id d'utilisateur dans la requete !");
+            }
+            const typedQuery = req.query as { userId: number };
+            if (!typedQuery || !typedQuery.userId) {
+                throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un id d'utilisateur dans la requete !");
+            }
+
+            const userId = typedQuery.userId;
+            return rep.send({
+                success: true,
+                message: `Voici le path de la photo de profil de l'utilisateur ${userId}`,
+                data: await getPicturePath(userId)
             } as ISuccessResponse);
         }
     });

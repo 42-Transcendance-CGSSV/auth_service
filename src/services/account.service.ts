@@ -80,7 +80,7 @@ export async function changeAccountPicture(multipart: MultipartFile | undefined,
 
     fs.writeFile(path, buffer, async (err) => {
         if (!err) {
-            await updatePicturePath(userId, path);
+            await updatePicturePath(userId, path.substring(1));
             return;
         }
         throw new ApiError(ApiErrorCode.DATABASE_ERROR, "Impossible de mettre a jour le chemin de la photo de profil.");
