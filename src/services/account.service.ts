@@ -2,11 +2,12 @@ import { generateUUID } from "../utils/uuid.util";
 import { deleteVerificationToken, getVerificationToken, insertVerificationToken } from "../database/repositories/verification.repository";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { FastifyRequest } from "fastify";
-import { activateUser } from "../database/repositories/user.repository";
+import { activateUser, getUserById, getUserByName } from "../database/repositories/user.repository";
 import { MultipartFile } from "@fastify/multipart";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
+import { IPublicUser } from "../interfaces/user.interface";
 
 export async function sendVerificationToken(userId: number): Promise<void> {
     await createVerificationToken(userId);
@@ -61,6 +62,45 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     } catch {
         return Promise.resolve(false);
     }
+}
+
+export async function getUser(req: FastifyRequest): Promise<IPublicUser> {
+    if (!req.query || typeof req.query !== "object") {
+        throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
+    }
+
+    let type: "ID" | "NAME";
+    let value: number | string | null = null;
+
+    if ("name" in req.query && typeof req.query.name === "string") {
+        type = "NAME";
+        value = req.query.name;
+    } else if ("userId" in req.query && typeof req.query.userId === "number") {
+        type = "ID";
+        value = req.query.userId;
+    } else {
+        throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
+    }
+
+    if (type === "NAME") {
+        const user = await getUserByName(value as string);
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            verified: user.verified
+        } as unknown as IPublicUser;
+    }
+    if (type === "ID") {
+        const user = await getUserById(value as number);
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            verified: user.verified
+        } as unknown as IPublicUser;
+    }
+    throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }
 
 export async function changeAccountPicture(multipart: MultipartFile | undefined, userId: number): Promise<void> {

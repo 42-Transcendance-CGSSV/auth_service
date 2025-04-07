@@ -1,11 +1,14 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { activateAccount, changeAccountPicture } from "../services/account.service";
+import { activateAccount, changeAccountPicture, getUser } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getPicturePath } from "../database/repositories/pictures.repository";
 import { updatePartialUser } from "../database/repositories/user.repository";
 import { updateSchema } from "../schemas/update.schema";
 import HashUtil from "../utils/hash.util";
+import schema from "fluent-json-schema";
+import { getAccountSchema } from "../schemas/getaccount.schema";
+import { IPublicUser } from "../interfaces/user.interface";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.post("/activate-account", {
@@ -37,16 +40,11 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     });
 
     app.get("/get-picture/:userId", {
+        schema: {
+            querystring: schema.object().prop("userId", schema.number()).required()
+        },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            if (!req.query) {
-                throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un id d'utilisateur dans la requete !");
-            }
-            const typedQuery = req.query as { userId: number };
-            if (!typedQuery || !typedQuery.userId) {
-                throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un id d'utilisateur dans la requete !");
-            }
-
-            const userId = typedQuery.userId;
+            const userId = (req.query as { userId: number }).userId;
 
             return rep.send({
                 success: true,
@@ -69,6 +67,22 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
             return rep.send({
                 success: true,
                 message: "Le compte a bien ete mis a jour !"
+            } as ISuccessResponse);
+        }
+    });
+
+    app.get("/get-account/:user", {
+        schema: { querystring: getAccountSchema },
+        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
+            const user: IPublicUser = await getUser(req);
+            if (!user) {
+                throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
+            }
+
+            return rep.send({
+                success: true,
+                message: `Voici les informations de l'utilisateur`,
+                data: user
             } as ISuccessResponse);
         }
     });

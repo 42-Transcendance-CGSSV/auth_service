@@ -78,6 +78,26 @@ export async function userExists(email: string, username: string): Promise<boole
     });
 }
 
+export async function getUserByName(name: string): Promise<IUser> {
+    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE name = ?`;
+
+    const db = await dbPool.acquire();
+
+    return new Promise<IUser>((resolve, reject) => {
+        db.get<IUser>(query, [name], (err, row) => {
+            dbPool.release(db);
+            if (err) {
+                reject(
+                    new ApiError(
+                        ApiErrorCode.USER_NOT_FOUND,
+                        `Impossible de trouver un utilisateur ayant le pseudo ${name} dans la base de donnees !`
+                    )
+                );
+            } else resolve(toCamelCase(row) as unknown as IUser);
+        });
+    });
+}
+
 export async function getUserByEmail(email: string): Promise<IUser> {
     const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE email = ?`;
 

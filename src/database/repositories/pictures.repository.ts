@@ -43,10 +43,10 @@ export async function getPicturePath(userId: number): Promise<string> {
     return new Promise<string>((resolve) => {
         db.get(query, userId, (err, row) => {
             dbPool.release(db);
-            if (err) resolve("./data/static/profiles_pictures/sets/default.jpg");
+            if (err) resolve("/data/static/profiles_pictures/sets/default.jpg");
             const typedRow = row as { picture_path: string };
             if (!row || !typedRow || !("picture_path" in typedRow) || typeof typedRow.picture_path === "undefined") {
-                resolve("./data/static/profiles_pictures/sets/default.jpg");
+                resolve("/data/static/profiles_pictures/sets/default.jpg");
                 return;
             }
             resolve(typedRow.picture_path);
