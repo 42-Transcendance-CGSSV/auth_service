@@ -118,21 +118,22 @@ export async function getUserById(id: number): Promise<IUser> {
     });
 }
 
-export async function updateUser(user: IUser): Promise<boolean> {
-    const query = `UPDATE ${env.DB_USERS_TABLE} 
-                    SET name = ?, email = ?, password = ?
-                    WHERE id = ?`;
+export async function updatePartialUser<T>(userId: any, partialData: Partial<T>, fieldsToUpdate: (keyof T)[]): Promise<void> {
+    if (!fieldsToUpdate || fieldsToUpdate.length === 0) return;
 
-    const password = user.authProvider === "LOCAL" ? await (user as LocalUser).hashPassword() : null;
+    const values = fieldsToUpdate.map((field) => partialData[field]);
+    const filteredFields = fieldsToUpdate.filter((_, index) => values[index] !== null && values[index] !== undefined);
+    const filteredValues = values.filter((value) => value !== null && value !== undefined);
+
+    const setClause = filteredFields.map((fField) => `${String(fField)} = ?`).join(", ");
+    const query = `UPDATE ${env.DB_USERS_TABLE} SET ${setClause} WHERE id = ?`;
+
+    filteredValues.push(userId);
 
     const db = await dbPool.acquire();
-
-    return new Promise<boolean>((resolve, reject) => {
-        db.run(query, [user.name, user.email, password, user.verified, user.id], (err: Error | null) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve(true);
-        });
+    db.run(query, filteredValues, (err: Error | null) => {
+        dbPool.release(db);
+        if (err) throw err;
     });
 }
 
