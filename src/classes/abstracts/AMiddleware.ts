@@ -1,42 +1,59 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { IErrorResponse } from "../../interfaces/response.interface";
-import { ApiErrorCode } from "../../utils/errors.util";
 
+/**
+ * @description Abstract class for middlewares
+ */
 abstract class AMiddleware {
+    /**
+     * @description Array of routes
+     */
     private readonly routes: string[];
 
+    /**
+     * @description Constructor
+     */
     protected constructor() {
         this.routes = [];
     }
 
+    /**
+     * @description Get the routes
+     * @returns {string[]} Array of routes
+     */
     protected get getRoutes(): string[] {
         return this.routes;
     }
 
+    /**
+     * @description Register the middleware
+     * @param app Fastify instance
+     */
     public register(app: FastifyInstance): void {
         this.routes.forEach((route: string) => {
             app.addHook("preHandler", async (request: FastifyRequest, response: FastifyReply) => {
-                if (request.url === route) {
-                    const isValid: boolean = await this.handleRequest(app, request, response);
-                    if (!isValid) {
-                        response.status(401).send({
-                            success: false,
-                            errorCode: ApiErrorCode.UNAUTHORIZED,
-                            message: "The request is unauthenticated."
-                        } as IErrorResponse);
-                    }
-                    return isValid;
-                }
-                return Promise.resolve();
+                if (request.url === route) return await this.handleRequest(app, request, response);
+                return;
             });
         });
     }
 
+    /**
+     * @description Add a route to the middleware
+     * @param route Route to add
+     * @returns {AMiddleware} this
+     */
     public addRoute(route: string): AMiddleware {
         this.routes.push(route);
         return this;
     }
 
+    /**
+     * @description Handle the request
+     * @param app Fastify instance
+     * @param request Fastify request
+     * @param response Fastify response
+     * @returns {Promise<boolean>} true if the request is handled, false otherwise
+     */
     protected abstract handleRequest(app: FastifyInstance, request: FastifyRequest, response: FastifyReply): Promise<boolean>;
 }
 
