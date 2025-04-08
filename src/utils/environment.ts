@@ -7,6 +7,7 @@ export const env = {
     DB_TOKENS_TABLE: process.env.DB_TOKENS_TABLE || "tokens",
     DB_USERS_TABLE: process.env.DB_USERS_TABLE || "users",
     DB_VERIFICATIONS_TABLE: process.env.DB_TOKENS_TABLE || "verifications",
-    DB_PICTURES_TABLES: process.env.DB_PICTURES_TABLES || "pictures",
+    DB_PICTURES_TABLE: process.env.DB_PICTURES_TABLES || "pictures",
+    DB_2FA_TABLE: process.env.DB_2FA_TABLE || "2fa",
     JWT_SECRET: process.env.JWT_SECRET || "default_secret"
 };

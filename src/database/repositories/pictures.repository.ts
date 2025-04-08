@@ -6,7 +6,7 @@ import { getTimestamp } from "../../utils/timestamp.util";
 export async function createPicturesTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
-        CREATE TABLE IF NOT EXISTS ${env.DB_PICTURES_TABLES} 
+        CREATE TABLE IF NOT EXISTS ${env.DB_PICTURES_TABLE} 
         (
             user_id INTEGER UNIQUE PRIMARY KEY,
             picture_path  VARCHAR(50) NOT NULL UNIQUE, 
@@ -28,7 +28,7 @@ export async function createPicturesTable(app: FastifyInstance): Promise<void> {
 }
 
 export async function updatePicturePath(userId: number, picturePath: string): Promise<void> {
-    const query = `REPLACE INTO ${env.DB_PICTURES_TABLES} (user_id, picture_path, changed_at) VALUES (?, ?, ?)`;
+    const query = `REPLACE INTO ${env.DB_PICTURES_TABLE} (user_id, picture_path, changed_at) VALUES (?, ?, ?)`;
 
     const db = await dbPool.acquire();
     db.run(query, [userId, picturePath, getTimestamp()], function (err) {
@@ -38,7 +38,7 @@ export async function updatePicturePath(userId: number, picturePath: string): Pr
 }
 
 export async function getPicturePath(userId: number): Promise<string> {
-    const query = `SELECT picture_path FROM ${env.DB_PICTURES_TABLES} WHERE user_id = ?`;
+    const query = `SELECT picture_path FROM ${env.DB_PICTURES_TABLE} WHERE user_id = ?`;
     const db = await dbPool.acquire();
     return new Promise<string>((resolve) => {
         db.get(query, userId, (err, row) => {
