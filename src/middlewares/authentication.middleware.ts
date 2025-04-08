@@ -43,12 +43,11 @@ class AuthenticationMiddleware extends AMiddleware {
         } catch (error) {
             request.publicUser = undefined;
             if (error instanceof TokenError || error instanceof ApiError) {
-                response.status(401)
-                    .send({
-                        success: false,
-                        errorCode: ApiErrorCode.UNAUTHORIZED,
-                        message: error.message
-                    } as IErrorResponse);
+                response.status(401).send({
+                    success: false,
+                    errorCode: ApiErrorCode.UNAUTHORIZED,
+                    message: error.message
+                } as IErrorResponse);
             }
             return false;
         }
