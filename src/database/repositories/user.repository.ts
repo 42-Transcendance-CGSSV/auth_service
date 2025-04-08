@@ -4,7 +4,7 @@ import { env } from "../../utils/environment";
 import LocalUser from "../../classes/LocalUser";
 import ExternalUser from "../../classes/ExternalUser";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
-import { toCamelCase } from "../../utils/case.utils";
+import { toCamelCase } from "../../utils/case.util";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -21,12 +21,9 @@ export async function createUsersTable(): Promise<void> {
         )`;
 
     const db = await dbPool.acquire();
-    await new Promise<void>((resolve, reject) => {
-        db.run(query, (err) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve();
-        });
+    db.run(query, (err) => {
+        dbPool.release(db);
+        if (err) throw new ApiError(ApiErrorCode.DATABASE_ERROR, err.message);
     });
 }
 
@@ -81,6 +78,26 @@ export async function userExists(email: string, username: string): Promise<boole
     });
 }
 
+export async function getUserByName(name: string): Promise<IUser> {
+    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE name = ?`;
+
+    const db = await dbPool.acquire();
+
+    return new Promise<IUser>((resolve, reject) => {
+        db.get<IUser>(query, [name], (err, row) => {
+            dbPool.release(db);
+            if (err) {
+                reject(
+                    new ApiError(
+                        ApiErrorCode.USER_NOT_FOUND,
+                        `Impossible de trouver un utilisateur ayant le pseudo ${name} dans la base de donnees !`
+                    )
+                );
+            } else resolve(toCamelCase(row) as unknown as IUser);
+        });
+    });
+}
+
 export async function getUserByEmail(email: string): Promise<IUser> {
     const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE email = ?`;
 
@@ -121,21 +138,22 @@ export async function getUserById(id: number): Promise<IUser> {
     });
 }
 
-export async function updateUser(user: IUser): Promise<boolean> {
-    const query = `UPDATE ${env.DB_USERS_TABLE} 
-                    SET name = ?, email = ?, password = ?
-                    WHERE id = ?`;
+export async function updatePartialUser<T>(userId: any, partialData: Partial<T>, fieldsToUpdate: (keyof T)[]): Promise<void> {
+    if (!fieldsToUpdate || fieldsToUpdate.length === 0) return;
 
-    const password = user.authProvider === "LOCAL" ? await (user as LocalUser).hashPassword() : null;
+    const values = fieldsToUpdate.map((field) => partialData[field]);
+    const filteredFields = fieldsToUpdate.filter((_, index) => values[index] !== null && values[index] !== undefined);
+    const filteredValues = values.filter((value) => value !== null && value !== undefined);
+
+    const setClause = filteredFields.map((fField) => `${String(fField)} = ?`).join(", ");
+    const query = `UPDATE ${env.DB_USERS_TABLE} SET ${setClause} WHERE id = ?`;
+
+    filteredValues.push(userId);
 
     const db = await dbPool.acquire();
-
-    return new Promise<boolean>((resolve, reject) => {
-        db.run(query, [user.name, user.email, password, user.verified, user.id], (err: Error | null) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve(true);
-        });
+    db.run(query, filteredValues, (err: Error | null) => {
+        dbPool.release(db);
+        if (err) throw err;
     });
 }
 
@@ -143,12 +161,9 @@ export async function activateUser(userId: number): Promise<void> {
     const query: string = `UPDATE ${env.DB_USERS_TABLE} SET verified = 1 WHERE id = ?`;
     const db = await dbPool.acquire();
 
-    return new Promise<void>((resolve, reject) => {
-        db.run(query, [userId], (err: Error | null) => {
-            dbPool.release(db);
-            if (err) reject(err);
-            else resolve();
-        });
+    db.run(query, [userId], (err: Error | null) => {
+        dbPool.release(db);
+        if (err) throw err;
     });
 }
 

@@ -1,4 +1,5 @@
 import { IExternalUser, IPublicUser } from "../interfaces/user.interface";
+import { getTimestamp } from "../utils/timestamp.util";
 
 export class ExternalUser implements IExternalUser {
     private _id: number;
@@ -6,7 +7,7 @@ export class ExternalUser implements IExternalUser {
     private _email: string;
     private _createdAt: number;
     private _verified: boolean;
-    private _authProvider: string;
+    private _authProvider: "LOCAL" | "EXTERNAL";
     private _externalToken: string;
 
     public constructor(name: string, email: string, externalToken: string) {
@@ -15,7 +16,7 @@ export class ExternalUser implements IExternalUser {
         this._email = email;
         this._externalToken = externalToken;
         this._authProvider = "EXTERNAL";
-        this._createdAt = Date.now();
+        this._createdAt = getTimestamp();
         this._verified = true;
     }
 
@@ -59,11 +60,11 @@ export class ExternalUser implements IExternalUser {
         this._verified = value;
     }
 
-    public get authProvider(): string {
+    public get authProvider(): "LOCAL" | "EXTERNAL" {
         return this._authProvider;
     }
 
-    public set authProvider(value: string) {
+    public set authProvider(value: "LOCAL" | "EXTERNAL") {
         this._authProvider = value;
     }
 
