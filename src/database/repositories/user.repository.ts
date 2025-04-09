@@ -1,10 +1,10 @@
 import { dbPool } from "../database";
-import { IPublicUser, IUser } from "../../interfaces/user.interface";
 import { env } from "../../utils/environment";
-import LocalUser from "../../classes/LocalUser";
-import ExternalUser from "../../classes/ExternalUser";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { toCamelCase } from "../../utils/case.util";
+import AUser from "../../classes/abstracts/AUser";
+import LocalUser from "../../classes/users/local.user";
+import ExternalUser from "../../classes/users/external.user";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -27,7 +27,7 @@ export async function createUsersTable(): Promise<void> {
     });
 }
 
-export async function insertUser(user: IUser): Promise<IPublicUser> {
+export async function insertUser(user: AUser): Promise<number> {
     const query = `INSERT INTO ${env.DB_USERS_TABLE} (id, name, email, password, auth_provider, external_token, created_at, verified)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
@@ -36,7 +36,7 @@ export async function insertUser(user: IUser): Promise<IPublicUser> {
 
     const db = await dbPool.acquire();
 
-    return new Promise<IPublicUser>((resolve, reject) => {
+    return new Promise<number>((resolve, reject) => {
         db.run(
             query,
             [null, user.name, user.email, password, user.authProvider, externalProviderId, user.createdAt, user.verified],
@@ -49,10 +49,9 @@ export async function insertUser(user: IUser): Promise<IPublicUser> {
                             "Un utilisateur ayant le meme pseudo / email est deja present dans la base de donnes !"
                         )
                     );
-                } else {
-                    user.id = this.lastID;
-                    resolve(user);
+                    return;
                 }
+                resolve(this.lastID);
             }
         );
     });
@@ -78,62 +77,32 @@ export async function userExists(email: string, username: string): Promise<boole
     });
 }
 
-export async function getUserByName(name: string): Promise<IUser> {
-    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE name = ?`;
+export async function getUserByKey(key: string, keyValue: any): Promise<AUser> {
+    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE ${key} = ?`;
 
     const db = await dbPool.acquire();
 
-    return new Promise<IUser>((resolve, reject) => {
-        db.get<IUser>(query, [name], (err, row) => {
+    return new Promise<AUser>((resolve, reject) => {
+        db.get(query, [keyValue], (err, row) => {
             dbPool.release(db);
             if (err) {
                 reject(
                     new ApiError(
                         ApiErrorCode.USER_NOT_FOUND,
-                        `Impossible de trouver un utilisateur ayant le pseudo ${name} dans la base de donnees !`
+                        `Impossible de trouver un utilisateur correspondant a ${key} = ${keyValue} dans la base de donnees !`
                     )
                 );
-            } else resolve(toCamelCase(row) as unknown as IUser);
-        });
-    });
-}
-
-export async function getUserByEmail(email: string): Promise<IUser> {
-    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE email = ?`;
-
-    const db = await dbPool.acquire();
-
-    return new Promise<IUser>((resolve, reject) => {
-        db.get<IUser>(query, [email], (err, row) => {
-            dbPool.release(db);
-            if (err) {
+                return;
+            }
+            const user: AUser | null = userFromSql(row);
+            if (!user)
                 reject(
                     new ApiError(
                         ApiErrorCode.USER_NOT_FOUND,
-                        `Impossible de trouver un utilisateur ayant l'email ${email} dans la base de donnees !`
+                        `Impossible de trouver un utilisateur correspondant a ${key} = ${keyValue} dans la base de donnees !`
                     )
                 );
-            } else resolve(toCamelCase(row) as unknown as IUser);
-        });
-    });
-}
-
-export async function getUserById(id: number): Promise<IUser> {
-    const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE id = ?`;
-
-    const db = await dbPool.acquire();
-
-    return new Promise<IUser>((resolve, reject) => {
-        db.get<IUser>(query, [id], (err, row) => {
-            dbPool.release(db);
-            if (err) {
-                reject(
-                    new ApiError(
-                        ApiErrorCode.USER_NOT_FOUND,
-                        `Impossible de trouver un utilisateur ayant l'id ${id} dans la base de donnees !`
-                    )
-                );
-            } else resolve(toCamelCase(row) as unknown as IUser);
+            resolve(user as AUser);
         });
     });
 }
@@ -167,14 +136,29 @@ export async function activateUser(userId: number): Promise<void> {
     });
 }
 
-export async function deleteUser(id: number): Promise<boolean> {
+export async function deleteUser(userId: number): Promise<boolean> {
     const query = `DELETE FROM ${env.DB_USERS_TABLE} WHERE id = ?`;
     const db = await dbPool.acquire();
     return new Promise<boolean>((resolve, reject) => {
-        db.run(query, [id], function (err) {
+        db.run(query, [userId], function (err) {
             dbPool.release(db);
             if (err) reject(err);
             else resolve(true);
         });
     });
+}
+
+function userFromSql(row: unknown): AUser | null {
+    if (!row) return null;
+    const camelCaseRow = toCamelCase(row);
+    if (!camelCaseRow || !camelCaseRow.id) return null;
+    const authProvider: string = camelCaseRow.authProvider;
+    if (!authProvider) return null;
+    if (authProvider === "LOCAL") {
+        return LocalUser.fromDatabase(camelCaseRow);
+    }
+    if (authProvider === "EXTERNAL") {
+        return ExternalUser.fromDatabase(camelCaseRow);
+    }
+    return null;
 }

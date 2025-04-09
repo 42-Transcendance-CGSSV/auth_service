@@ -1,17 +1,25 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { IPublicUser } from "../interfaces/user.interface";
 import { ApiError, ApiErrorCode } from "./errors.util";
 import { TokenError } from "fast-jwt";
 import { getTimestamp } from "./timestamp.util";
 
-export function generateJWT(app: FastifyInstance, payload: IPublicUser, expireTime: string): string {
+export interface IJwtPayload {
+    id: number;
+    name: string;
+    authProvider: "LOCAL" | "EXTERNAL";
+    verified: boolean;
+    hasTwoFactor: boolean;
+    hasPassedTwoFactor: boolean;
+}
+
+export function generateJWT(app: FastifyInstance, payload: any, expireTime: string): string {
     return app.jwt.sign(payload, {
         clockTimestamp: getTimestamp(),
         expiresIn: expireTime
     });
 }
 
-export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IPublicUser> {
+export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<unknown> {
     return new Promise((resolve, reject) => {
         const jwt = getJWTToken(req);
         const token: string | null = jwt[1];
@@ -21,12 +29,11 @@ export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IP
         }
 
         try {
-            app.jwt.verify<IPublicUser>(token, (_err, payload) => {
+            app.jwt.verify<any>(token, (_err, payload) => {
                 if (!payload) {
                     reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Token valide mais payload absent"));
                     return;
                 }
-
                 resolve(payload);
             });
         } catch (error) {

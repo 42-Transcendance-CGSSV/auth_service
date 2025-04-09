@@ -1,23 +1,27 @@
-import { ILocalUser, IPublicUser } from "../interfaces/user.interface";
-import HashUtil from "../utils/hash.util";
+import { IJwtPayload } from "../../utils/jwt.util";
 
-export class LocalUser implements ILocalUser {
+abstract class AUser {
     private _id: number;
     private _name: string;
     private _email: string;
     private _createdAt: number;
     private _verified: boolean;
     private _authProvider: "LOCAL" | "EXTERNAL";
-    private _password: string;
 
-    public constructor(name: string, email: string, password: string) {
-        this._id = -1;
+    protected constructor(
+        id: number,
+        name: string,
+        email: string,
+        createdAt: number,
+        verified: boolean,
+        authProvider: "LOCAL" | "EXTERNAL"
+    ) {
+        this._id = id;
         this._name = name;
         this._email = email;
-        this._password = password;
-        this._authProvider = "LOCAL";
-        this._createdAt = Date.now();
-        this._verified = false;
+        this._createdAt = createdAt;
+        this._verified = verified;
+        this._authProvider = authProvider;
     }
 
     public get id(): number {
@@ -68,26 +72,16 @@ export class LocalUser implements ILocalUser {
         this._authProvider = value;
     }
 
-    public get password(): string {
-        return this._password;
-    }
-
-    public set password(value: string) {
-        this._password = value;
-    }
-
-    public toPublicUser(): IPublicUser {
+    public toPublicUser(): IJwtPayload {
         return {
             id: this._id,
             name: this._name,
             verified: this._verified,
-            authProvider: this._authProvider
-        };
-    }
-
-    public async hashPassword(): Promise<string> {
-        return HashUtil.hashPassword(this._password);
+            authProvider: this._authProvider,
+            hasTwoFactor: false,
+            hasPassedTwoFactor: false
+        } as IJwtPayload;
     }
 }
 
-export default LocalUser;
+export default AUser;

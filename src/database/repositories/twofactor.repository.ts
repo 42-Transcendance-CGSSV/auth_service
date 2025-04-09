@@ -2,8 +2,7 @@ import { dbPool } from "../database";
 import { env } from "../../utils/environment";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { FastifyInstance } from "fastify";
-import TwoFactorInterface from "../../interfaces/twofactor.interface";
-import { generateUUID } from "../../utils/uuid.util";
+import LocalUser from "../../classes/users/local.user";
 
 export async function createTwoFactorTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
@@ -42,21 +41,16 @@ export async function userHas2FA(userId: number): Promise<boolean> {
     });
 }
 
-export async function enable2FA(twoFactorInterface: TwoFactorInterface): Promise<TwoFactorInterface> {
+export async function enable2FA(localUser: LocalUser): Promise<LocalUser> {
     const query = `INSERT INTO ${env.DB_2FA_TABLE} (user_id, token, backup_codes) VALUES (?, ?, ?)`;
 
-    if (!twoFactorInterface.backupCodes || twoFactorInterface.backupCodes.length === 0) {
-        for (let i = 0; i < 3; ++i) {
-            twoFactorInterface.backupCodes.push(generateUUID().replace("-", ""));
-        }
-    }
-
     const db = await dbPool.acquire();
-    return new Promise<TwoFactorInterface>((resolve, reject) => {
-        db.run(query, [twoFactorInterface.userId, twoFactorInterface.token, twoFactorInterface.backupCodes], function (err) {
+    return new Promise<LocalUser>((resolve, reject) => {
+        localUser.enableTwoFactor("TEST SECRET");
+        db.run(query, [localUser.id, localUser.twoFactorSecret, localUser.serializeBackupCodes()], function (err) {
             dbPool.release(db);
             if (err) reject(err);
-            else resolve(twoFactorInterface);
+            else resolve(localUser);
         });
     });
 }

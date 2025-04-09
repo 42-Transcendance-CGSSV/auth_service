@@ -1,9 +1,9 @@
 import RefreshToken from "../classes/RefreshToken";
-import { getUserById } from "../database/repositories/user.repository";
 import * as tokenRepository from "../database/repositories/refreshtokens.repository";
 import { getToken } from "../database/repositories/refreshtokens.repository";
 import { addDays, getTimestamp } from "../utils/timestamp.util";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
+import { getUserByKey } from "../database/repositories/user.repository";
 
 export async function createRefreshToken(userId: number): Promise<RefreshToken> {
     const token: RefreshToken = RefreshToken.generateToken(userId, addDays(getTimestamp(), 30));
@@ -19,7 +19,7 @@ export async function updateToken(token: string): Promise<RefreshToken> {
     const refreshToken = await getToken(token);
     if (refreshToken.isExpired) throw new ApiError(ApiErrorCode.EXPIRED_TOKEN, "Ce refresh token est expire");
 
-    const user = await getUserById(refreshToken.getUserId);
+    const user = await getUserByKey("id", refreshToken.getUserId);
     if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur !");
     await revokeToken(refreshToken.getToken);
     const newToken = RefreshToken.generateToken(user.id, addDays(getTimestamp(), 30));

@@ -1,19 +1,17 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { registerSchema } from "../schemas/register.schemas";
-import { loginSchema } from "../schemas/login.schema";
 import { registerUser, loginLocalUser } from "../services/auth.service";
-import { generateJWT } from "../utils/jwt.util";
+import { generateJWT, IJwtPayload } from "../utils/jwt.util";
 import { sendAuthCookies } from "../utils/cookies.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
-import { IPublicUser } from "../interfaces/user.interface";
 import { sendVerificationToken } from "../services/account.service";
 import { createRefreshToken, revokeToken, updateToken } from "../services/tokens.service";
+import { loginSchema, registerSchema } from "../schemas/auth.schema";
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     app.post("/register", {
         schema: { body: registerSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            const publicUser: IPublicUser = await registerUser(req);
+            const publicUser: IJwtPayload = await registerUser(req);
             await sendVerificationToken(publicUser.id);
             rep.send({
                 success: true,
@@ -26,15 +24,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     app.post("/login", {
         schema: { body: loginSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            const publicUser: IPublicUser = await loginLocalUser(req, app);
+            const publicUser: IJwtPayload = await loginLocalUser(req, app);
             const jwt: string = generateJWT(app, publicUser, "5m");
             const refreshToken: string | null = req.cookies["refresh_token"] || null;
-            let refreshTokenObj;
-            if (!refreshToken) {
-                refreshTokenObj = await createRefreshToken(publicUser.id);
-            } else {
-                refreshTokenObj = await updateToken(refreshToken);
-            }
+            const refreshTokenObj = !refreshToken ? await createRefreshToken(publicUser.id) : await updateToken(refreshToken);
             sendAuthCookies(refreshTokenObj, jwt, rep);
             rep.send({
                 success: true,

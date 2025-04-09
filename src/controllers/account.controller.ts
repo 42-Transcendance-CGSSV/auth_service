@@ -4,11 +4,10 @@ import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getPicturePath } from "../database/repositories/pictures.repository";
 import { updatePartialUser } from "../database/repositories/user.repository";
-import { updateSchema } from "../schemas/update.schema";
 import HashUtil from "../utils/hash.util";
 import schema from "fluent-json-schema";
-import { getAccountSchema } from "../schemas/getaccount.schema";
-import { IPublicUser } from "../interfaces/user.interface";
+import { IJwtPayload } from "../utils/jwt.util";
+import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.post("/activate-account", {
@@ -55,7 +54,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     });
 
     app.patch("/update-account", {
-        schema: { body: updateSchema },
+        schema: { body: updateAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
             if (!req.publicUser) return;
             if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
@@ -74,7 +73,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     app.get("/get-account/:user", {
         schema: { querystring: getAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            const user: IPublicUser = await getUser(req);
+            const user: IJwtPayload = await getUser(req);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
             }
