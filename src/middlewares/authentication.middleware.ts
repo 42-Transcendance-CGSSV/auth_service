@@ -37,17 +37,19 @@ class AuthenticationMiddleware extends AMiddleware {
      */
     public async handleRequest(app: FastifyInstance, request: FastifyRequest, response: FastifyReply): Promise<boolean> {
         try {
+            request.publicUser = undefined;
             const payload = await verifyJWT(app, request);
-            if (isPublicUser(payload)) {
-                request.publicUser = payload;
-                return true;
-            } else if (is2FA(payload)) {
-                request.publicUser = undefined;
-                throw new ApiError(ApiErrorCode.TWO_FACTOR_REQUIRED, "Vous devez passer le processus d'authentification à deux facteurs !");
+
+            if (!isUserToken(payload)) {
+                throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le JWT n'est pas valide !");
             }
+            if (needTwoFactor(payload)) {
+                throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
+            }
+
+            request.publicUser = payload;
             return true;
         } catch (error) {
-            request.publicUser = undefined;
             if (error instanceof TokenError) {
                 replyWithError(response, error, ApiErrorCode.UNAUTHORIZED);
             } else if (error instanceof ApiError) replyWithError(response, error, error.code);
@@ -64,19 +66,17 @@ function replyWithError(response: FastifyReply, error: Error, errorCode: ApiErro
     } as IErrorResponse);
 }
 
-function is2FA(payload: unknown): payload is { need_2_fa: boolean } {
-    return typeof payload === "object" && payload !== null && "need_2_fa" in payload;
+function needTwoFactor(payload: unknown): boolean {
+    return (typeof payload === "object" &&
+        payload !== null &&
+        "hasTwoFactor" in payload &&
+        payload.hasTwoFactor &&
+        "hasPassedTwoFactor" in payload &&
+        !payload.hasPassedTwoFactor) as boolean;
 }
 
-function isPublicUser(payload: any): payload is IJwtPayload {
-    return (
-        typeof payload === "object" &&
-        payload !== null &&
-        "id" in payload &&
-        "name" in payload &&
-        "authProvider" in payload &&
-        "verified" in payload
-    );
+function isUserToken(payload: any): payload is IJwtPayload {
+    return typeof payload === "object" && payload !== null && "id" in payload;
 }
 
 export default AuthenticationMiddleware;

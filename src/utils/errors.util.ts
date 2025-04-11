@@ -7,7 +7,6 @@ export enum ApiErrorCode {
 
     // Erreurs d'autorisation (403)
     UNAUTHORIZED = "UNAUTHORIZED",
-    TWO_FACTOR_REQUIRED = "TWO_FACTOR_REQUIRED",
     INSUFFICIENT_PERMISSIONS = "INSUFFICIENT_PERMISSIONS",
     FORBIDDEN_RESOURCE = "FORBIDDEN_RESOURCE",
     ALREADY_LOGGED = "ALREADY_LOGGED",
@@ -55,7 +54,6 @@ export const getHttpStatusCode = (errorCode: ApiErrorCode): number => {
         case ApiErrorCode.INSUFFICIENT_PERMISSIONS:
         case ApiErrorCode.FORBIDDEN_RESOURCE:
         case ApiErrorCode.ALREADY_LOGGED:
-        case ApiErrorCode.TWO_FACTOR_REQUIRED:
             return 403;
 
         // 404 - Not Found

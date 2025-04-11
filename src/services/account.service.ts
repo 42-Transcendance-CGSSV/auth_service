@@ -17,8 +17,8 @@ export async function sendVerificationToken(userId: number, app: FastifyInstance
         .then(() => {
             return true;
         })
-        .catch(async (err) => {
-            app.log.error(err.message);
+        .catch(async (err: Error) => {
+            app.log.error("Unable to send verification email for account activation " + err.message + ":" + err.name);
             await deleteVerificationToken(token);
             return false;
         });
