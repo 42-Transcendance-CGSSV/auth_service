@@ -10,7 +10,7 @@ import { IJwtPayload } from "../utils/jwt.util";
 import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
-    app.post("/activate-account", {
+    app.get("/activate-account", {
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
             await activateAccount(req);
             await rep.send({

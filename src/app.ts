@@ -12,7 +12,7 @@ import { registerAuthRoutes } from "./controllers/auth.controller";
 import { registerTokensRoutes } from "./controllers/tokens.controller";
 import AuthenticationMiddleware from "./middlewares/authentication.middleware";
 import { registerAccountRoutes } from "./controllers/account.controller";
-import { clearInterval } from "node:timers";
+import { clearInterval } from "timers";
 
 const app = fastify({
     logger: {
@@ -45,7 +45,6 @@ const app = fastify({
     },
     disableRequestLogging: true
 });
-dotenv.config();
 
 const listeners: string[] = ["SIGINT", "SIGTERM"];
 listeners.forEach((signal): void => {
@@ -67,12 +66,16 @@ listeners.forEach((signal): void => {
     });
 });
 
+dotenv.config();
+
 async function start(): Promise<void> {
     app.register(fastifyCookie);
     app.register(fastifyMultipart);
     app.register(fastifyJwt, {
         secret: env.JWT_SECRET as string
     });
+
+    console.log(env.BREVO_API_KEY);
 
     app.setErrorHandler((error, _request, reply) => {
         if (error.name === "ApiError") {

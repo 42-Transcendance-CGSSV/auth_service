@@ -1,17 +1,27 @@
 import { generateUUID } from "../utils/uuid.util";
 import { deleteVerificationToken, getVerificationToken, insertVerificationToken } from "../database/repositories/verification.repository";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
-import { FastifyRequest } from "fastify";
+import { FastifyInstance, FastifyRequest } from "fastify";
 import { activateUser, getUserByKey } from "../database/repositories/user.repository";
 import { MultipartFile } from "@fastify/multipart";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
 import { IJwtPayload } from "../utils/jwt.util";
+import { sendEmailFromUser } from "../utils/mail.util";
 
-export async function sendVerificationToken(userId: number): Promise<void> {
-    await createVerificationToken(userId);
-    //TODO: send email !
+export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
+    const token = await createVerificationToken(userId);
+    const promiseMail = sendEmailFromUser(3, { TOKEN: token }, userId, "Verification de votre compte ft_transcendence !");
+    return promiseMail
+        .then(() => {
+            return true;
+        })
+        .catch(async (err) => {
+            app.log.error(err.message);
+            await deleteVerificationToken(token);
+            return false;
+        });
 }
 
 export async function createVerificationToken(userId: number): Promise<string> {
@@ -26,6 +36,9 @@ export async function createVerificationToken(userId: number): Promise<string> {
 }
 
 export async function activateAccount(req: FastifyRequest): Promise<void> {
+    if (!req.query || typeof req.query !== "object") {
+        throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un token dans la requete !");
+    }
     const { token } = req.query as { token: string };
     if (!token) {
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Le token est necessaire pour l'activation du compte");

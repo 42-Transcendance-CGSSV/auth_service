@@ -12,11 +12,13 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         schema: { body: registerSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
             const publicUser: IJwtPayload = await registerUser(req);
-            await sendVerificationToken(publicUser.id);
+            const needVerification = await sendVerificationToken(publicUser.id, app);
             rep.send({
                 success: true,
                 data: publicUser,
-                message: "Le conpte utilisateur a ete cree, il faut encore l'activer !"
+                message: needVerification
+                    ? "Le compte utilisateur a été créé avec succès ! Il faut encore l'activer"
+                    : "Le compte utilisateur a été créé avec succès ! Vous pouvez vous connecter !"
             } as ISuccessResponse);
         }
     }); //Inscription d'un nouvel utilisateur
@@ -51,12 +53,12 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
                 } catch {
                     app.log.info("Impossible de supprimer le refresh token");
                 }
-                rep.clearCookie("auth_token");
-                rep.send({
-                    success: true,
-                    message: "L'utilisateur a ete deconnecte"
-                } as ISuccessResponse);
             }
+            rep.clearCookie("auth_token");
+            rep.send({
+                success: true,
+                message: "L'utilisateur a ete deconnecte"
+            } as ISuccessResponse);
         }
     }); //Déconnexion et invalidation du token
     app.log.info("| Auth routes registered");
