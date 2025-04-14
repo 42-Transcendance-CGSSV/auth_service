@@ -26,7 +26,9 @@ class AuthenticationMiddleware extends AMiddleware {
             .addRoute("/token/decode")
             .addRoute("/token/validate")
             .addRoute("/upload-picture")
-            .addRoute("/update-account");
+            .addRoute("/update-account")
+            .addRoute("/totp/toggle")
+            .addRoute("/totp/validate");
     }
 
     /**
@@ -43,7 +45,8 @@ class AuthenticationMiddleware extends AMiddleware {
             if (!isUserToken(payload)) {
                 throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le JWT n'est pas valide !");
             }
-            if (needTwoFactor(payload)) {
+
+            if (needTwoFactor(payload) && request.url !== "/totp/validate") {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
             }
 

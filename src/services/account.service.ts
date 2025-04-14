@@ -20,6 +20,7 @@ export async function sendVerificationToken(userId: number, app: FastifyInstance
         .catch(async (err: Error) => {
             app.log.error("Unable to send verification email for account activation " + err.message + ":" + err.name);
             await deleteVerificationToken(token);
+            await activateUser(userId);
             return false;
         });
 }
@@ -77,7 +78,7 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-export async function getUser(req: FastifyRequest): Promise<IJwtPayload> {
+export async function getJwtPayload(req: FastifyRequest): Promise<IJwtPayload> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }

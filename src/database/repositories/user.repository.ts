@@ -83,8 +83,8 @@ export async function getUserByKey(key: string, keyValue: any): Promise<AUser> {
     const db = await dbPool.acquire();
 
     return new Promise<AUser>((resolve, reject) => {
-        db.get(query, [keyValue], (err, row) => {
-            dbPool.release(db);
+        db.get(query, [keyValue], async (err, row) => {
+            await dbPool.release(db);
             if (err) {
                 reject(
                     new ApiError(
@@ -94,7 +94,7 @@ export async function getUserByKey(key: string, keyValue: any): Promise<AUser> {
                 );
                 return;
             }
-            const user: AUser | null = userFromSql(row);
+            const user: AUser | null = await userFromSql(row);
             if (!user)
                 reject(
                     new ApiError(
@@ -148,14 +148,14 @@ export async function deleteUser(userId: number): Promise<boolean> {
     });
 }
 
-function userFromSql(row: unknown): AUser | null {
+async function userFromSql(row: unknown): Promise<AUser | null> {
     if (!row) return null;
     const camelCaseRow = toCamelCase(row);
     if (!camelCaseRow || !camelCaseRow.id) return null;
     const authProvider: string = camelCaseRow.authProvider;
     if (!authProvider) return null;
     if (authProvider === "LOCAL") {
-        return LocalUser.fromDatabase(camelCaseRow);
+        return await LocalUser.fromDatabase(camelCaseRow);
     }
     if (authProvider === "EXTERNAL") {
         return ExternalUser.fromDatabase(camelCaseRow);

@@ -3,14 +3,16 @@ import { env } from "../../utils/environment";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { FastifyInstance } from "fastify";
 import LocalUser from "../../classes/users/local.user";
+import { toCamelCase } from "../../utils/case.util";
+import { Dictionary } from "lodash";
 
-export async function createTwoFactorTable(app: FastifyInstance): Promise<void> {
+export async function createTotpTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
-        CREATE TABLE IF NOT EXISTS ${env.DB_2FA_TABLE} 
+        CREATE TABLE IF NOT EXISTS ${env.DB_TOTP_TABLE}
         (
             user_id INTEGER UNIQUE PRIMARY KEY,
-            token VARCHAR(36) NOT NULL UNIQUE, 
+            totp_secret VARCHAR(36) NOT NULL UNIQUE, 
             backup_codes TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -28,8 +30,8 @@ export async function createTwoFactorTable(app: FastifyInstance): Promise<void> 
     }
 }
 
-export async function userHas2FA(userId: number): Promise<boolean> {
-    const query = `SELECT EXISTS(SELECT 1 FROM ${env.DB_2FA_TABLE} WHERE user_id = ?) AS has_2fa`;
+export async function userIsProtected(userId: number): Promise<boolean> {
+    const query = `SELECT EXISTS(SELECT 1 FROM ${env.DB_TOTP_TABLE} WHERE user_id = ?) AS has_2fa`;
     const db = await dbPool.acquire();
     return new Promise<boolean>((resolve, reject) => {
         db.get(query, [userId], (err, row) => {
@@ -41,12 +43,11 @@ export async function userHas2FA(userId: number): Promise<boolean> {
     });
 }
 
-export async function enable2FA(localUser: LocalUser): Promise<LocalUser> {
-    const query = `INSERT INTO ${env.DB_2FA_TABLE} (user_id, token, backup_codes) VALUES (?, ?, ?)`;
+export async function enableTotp(localUser: LocalUser): Promise<LocalUser> {
+    const query = `INSERT INTO ${env.DB_TOTP_TABLE} (user_id, totp_secret, backup_codes) VALUES (?, ?, ?)`;
 
     const db = await dbPool.acquire();
     return new Promise<LocalUser>((resolve, reject) => {
-        localUser.enableTwoFactor("TEST SECRET");
         db.run(query, [localUser.id, localUser.twoFactorSecret, localUser.serializeBackupCodes()], function (err) {
             dbPool.release(db);
             if (err) reject(err);
@@ -55,25 +56,25 @@ export async function enable2FA(localUser: LocalUser): Promise<LocalUser> {
     });
 }
 
-export async function get2FAToken(userId: number): Promise<string> {
-    const query = `SELECT token FROM ${env.DB_2FA_TABLE} WHERE user_id = ?`;
+export async function getTotpSecret(userId: number): Promise<string> {
+    const query = `SELECT totp_secret FROM ${env.DB_TOTP_TABLE} WHERE user_id = ?`;
     const db = await dbPool.acquire();
     return new Promise<string>((resolve, reject) => {
         db.get(query, [userId], (err, row) => {
             dbPool.release(db);
             if (err) reject(err);
-            const typedRow = row as { token: string };
-            if (!row || !typedRow || !("token" in typedRow) || typeof typedRow.token === "undefined") {
+            const typedRow = row as { totp_secret: string };
+            if (!row || !typedRow || !("totp_secret" in typedRow) || typeof typedRow.totp_secret === "undefined") {
                 reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Cet utilisateur n'a pas de 2FA !"));
                 return;
             }
-            resolve(typedRow.token);
+            resolve(typedRow.totp_secret);
         });
     });
 }
 
-export async function disable2FA(userId: number): Promise<void> {
-    const query = `DELETE FROM ${env.DB_2FA_TABLE} WHERE user_id = ?`;
+export async function disableTotp(userId: number): Promise<void> {
+    const query = `DELETE FROM ${env.DB_TOTP_TABLE} WHERE user_id = ?`;
 
     const db = await dbPool.acquire();
     db.run(query, [userId], function (err) {
@@ -85,7 +86,7 @@ export async function disable2FA(userId: number): Promise<void> {
 }
 
 export async function getBackupCodes(userId: number): Promise<string[]> {
-    const query = `SELECT bakcup_codes FROM ${env.DB_TOKENS_TABLE} WHERE user_id = ?`;
+    const query = `SELECT bakcup_codes FROM ${env.DB_TOTP_TABLE} WHERE user_id = ?`;
     const db = await dbPool.acquire();
     return new Promise<string[]>((resolve, reject) => {
         db.get(query, [userId], (err, row) => {
@@ -99,7 +100,7 @@ export async function getBackupCodes(userId: number): Promise<string[]> {
                 typeof typedRow.backup_codes === "undefined" ||
                 typedRow.backup_codes.length === 0
             ) {
-                reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Cet utilisateur n'a plus de code de secours !"));
+                resolve([]);
                 return;
             }
             resolve(typedRow.backup_codes.split(","));
@@ -107,8 +108,24 @@ export async function getBackupCodes(userId: number): Promise<string[]> {
     });
 }
 
+export async function getAllTotpDatas(userId: number): Promise<Dictionary<any>> {
+    const query = `SELECT * FROM ${env.DB_TOTP_TABLE} WHERE user_id = ?`;
+    const db = await dbPool.acquire();
+    return new Promise((resolve, reject) => {
+        db.get(query, [userId], (err, row) => {
+            dbPool.release(db);
+            if (err) reject(err);
+            if (typeof row === "undefined") {
+                reject(new ApiError(ApiErrorCode.RESOURCE_NOT_FOUND, "Impossible de retrouver les datas 2FA de cet utilistateur"));
+                return;
+            }
+            resolve(toCamelCase(row));
+        });
+    });
+}
+
 export async function updateBackupCodes(userId: number, backupCodes: string[]): Promise<void> {
-    const query = `UPDATE ${env.DB_2FA_TABLE} SET backup_codes = ? WHERE user_id = ?`;
+    const query = `UPDATE ${env.DB_TOTP_TABLE} SET backup_codes = ? WHERE user_id = ?`;
 
     const db = await dbPool.acquire();
     db.run(query, [backupCodes.join(","), userId], function (err) {

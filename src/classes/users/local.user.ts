@@ -4,6 +4,7 @@ import AUser from "../abstracts/AUser";
 import { IJwtPayload } from "../../utils/jwt.util";
 import { getTimestamp } from "../../utils/timestamp.util";
 import { Dictionary } from "lodash";
+import { getAllTotpDatas } from "../../database/repositories/totp.repository";
 
 export class LocalUser extends AUser {
     private _password: string;
@@ -56,13 +57,20 @@ export class LocalUser extends AUser {
         return new LocalUser(name, email, getTimestamp(), password);
     }
 
-    public static fromDatabase(dict: Dictionary<any>): LocalUser {
+    public static async fromDatabase(dict: Dictionary<any>): Promise<LocalUser> {
         const user = new LocalUser(dict.name, dict.email, dict.createdAt, dict.password);
         user.id = dict.id;
         user.verified = dict.verified;
-        user._twoFactorEnabled = dict.twoFactorEnabled;
-        user._twoFactorSecret = dict.twoFactorSecret;
-        user._twoFactorBackupCodes = dict.twoFactorBackupCodes ? dict.twoFactorBackupCodes.split(",") : null;
+        try {
+            const twoFactorDict = await getAllTotpDatas(user.id);
+            user._twoFactorEnabled = true;
+            user._twoFactorSecret = twoFactorDict.totpSecret;
+            user._twoFactorBackupCodes = twoFactorDict.backupCodes ? twoFactorDict.backupCodes.split(",") : null;
+        } catch (error) {
+            user._twoFactorEnabled = false;
+            user._twoFactorBackupCodes = null;
+            user._twoFactorSecret = null;
+        }
         return user;
     }
 
@@ -76,6 +84,12 @@ export class LocalUser extends AUser {
         this._twoFactorSecret = secret;
         this._twoFactorBackupCodes = [];
         this.refreshBackupCodes(10);
+    }
+
+    public disableTwoFactor(): void {
+        this._twoFactorEnabled = false;
+        this._twoFactorBackupCodes = null;
+        this._twoFactorSecret = null;
     }
 
     public async hashPassword(): Promise<string> {

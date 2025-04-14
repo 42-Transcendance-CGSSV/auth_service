@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { activateAccount, changeAccountPicture, getUser } from "../services/account.service";
+import { activateAccount, changeAccountPicture, getJwtPayload } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getPicturePath } from "../database/repositories/pictures.repository";
@@ -73,7 +73,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     app.get("/get-account/:user", {
         schema: { querystring: getAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            const user: IJwtPayload = await getUser(req);
+            const user: IJwtPayload = await getJwtPayload(req);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
             }
