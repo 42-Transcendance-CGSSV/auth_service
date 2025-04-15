@@ -8,7 +8,7 @@ import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
-import { IPublicUser } from "../interfaces/user.interface";
+import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
@@ -98,11 +98,11 @@ export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
 
     if (type === "NAME") {
         const user = await getUserByKey("name", value);
-        return user as IPublicUser;
+        return toPublicUser(user);
     }
     if (type === "ID") {
         const user = await getUserByKey("id", value);
-        return user as IPublicUser;
+        return toPublicUser(user);
     }
     throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }

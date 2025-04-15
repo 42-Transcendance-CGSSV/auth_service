@@ -2,15 +2,16 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiError, ApiErrorCode } from "./errors.util";
 import { TokenError } from "fast-jwt";
 import { getTimestamp } from "./timestamp.util";
+import { IPublicUser } from "../interfaces/user.interface";
 
-export function generateJWT(app: FastifyInstance, payload: any, expireTime: string): string {
+export function generateJWT(app: FastifyInstance, payload: IPublicUser, expireTime: string): string {
     return app.jwt.sign(payload, {
         clockTimestamp: getTimestamp(),
         expiresIn: expireTime
     });
 }
 
-export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<unknown> {
+export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IPublicUser> {
     return new Promise((resolve, reject) => {
         const jwt = getJWTToken(req);
         const token: string | null = jwt[1];
@@ -20,7 +21,7 @@ export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<un
         }
 
         try {
-            app.jwt.verify<any>(token, (_err, payload) => {
+            app.jwt.verify<IPublicUser>(token, (_err, payload) => {
                 if (!payload) {
                     reject(new ApiError(ApiErrorCode.INVALID_TOKEN, "Token valide mais payload absent"));
                     return;
