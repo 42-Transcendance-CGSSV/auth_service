@@ -6,8 +6,6 @@ import { createUsersTable } from "./repositories/user.repository";
 import { createTokensTable, evictExpiredTokens } from "./repositories/refreshtokens.repository";
 import { createVerificationTokenTable } from "./repositories/verification.repository";
 import { createPicturesTable } from "./repositories/pictures.repository";
-import { createTotpTable } from "./repositories/totp.repository";
-//import { createTwoFactorTable } from "./repositories/twofactor.repository";
 
 export let vacuumOldTokens: NodeJS.Timeout | null = null;
 
@@ -78,10 +76,6 @@ export async function createDatabase(app: FastifyInstance): Promise<void> {
         app.log.info("   Creating 'pictures' table...");
         await createPicturesTable(app);
         app.log.info("   'Pictures' table created successfully !");
-
-        app.log.info("   Creating '2fa' table...");
-        await createTotpTable(app);
-        app.log.info("   '2fa' table created successfully !");
 
         vacuumOldTokens = setInterval(async () => {
             app.log.info("Flushing old refresh tokens...");

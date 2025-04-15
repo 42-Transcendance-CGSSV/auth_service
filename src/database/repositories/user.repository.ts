@@ -2,9 +2,7 @@ import { dbPool } from "../database";
 import { env } from "../../utils/environment";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { toCamelCase } from "../../utils/case.util";
-import AUser from "../../classes/abstracts/AUser";
-import LocalUser from "../../classes/users/local.user";
-import ExternalUser from "../../classes/users/external.user";
+import { IProtectedUser } from "../../interfaces/user.interface";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -14,10 +12,10 @@ export async function createUsersTable(): Promise<void> {
             name VARCHAR(16) NOT NULL UNIQUE,
             email VARCHAR(320) NOT NULL UNIQUE,
             password VARCHAR(32),
-            auth_provider VARCHAR(8) NOT NULL,
             external_token TEXT,
             created_at INTEGER NOT NULL,
-            verified boolean NOT NULL
+            verified boolean NOT NULL,
+            totp_secret TEXT
         )`;
 
     const db = await dbPool.acquire();
@@ -27,19 +25,16 @@ export async function createUsersTable(): Promise<void> {
     });
 }
 
-export async function insertUser(user: AUser): Promise<number> {
-    const query = `INSERT INTO ${env.DB_USERS_TABLE} (id, name, email, password, auth_provider, external_token, created_at, verified)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-
-    const password = user.authProvider === "LOCAL" ? await (user as LocalUser).hashPassword() : null;
-    const externalProviderId = user.authProvider === "EXTERNAL" ? (user as ExternalUser).externalToken : null;
+export async function insertUser(user: IProtectedUser): Promise<number> {
+    const query = `INSERT INTO ${env.DB_USERS_TABLE} (id, name, email, password, external_token, created_at, verified, totp_secret)
+                   VALUES (?, ?, ?, ?, ?, ?, ?,?)`;
 
     const db = await dbPool.acquire();
 
     return new Promise<number>((resolve, reject) => {
         db.run(
             query,
-            [null, user.name, user.email, password, user.authProvider, externalProviderId, user.createdAt, user.verified],
+            [null, user.name, user.email, user.password, user.externalToken, user.createdAt, user.verified, null],
             function (err) {
                 dbPool.release(db);
                 if (err) {
@@ -77,12 +72,12 @@ export async function userExists(email: string, username: string): Promise<boole
     });
 }
 
-export async function getUserByKey(key: string, keyValue: any): Promise<AUser> {
+export async function getUserByKey(key: string, keyValue: any): Promise<IProtectedUser> {
     const query = `SELECT * FROM ${env.DB_USERS_TABLE} WHERE ${key} = ?`;
 
     const db = await dbPool.acquire();
 
-    return new Promise<AUser>((resolve, reject) => {
+    return new Promise<IProtectedUser>((resolve, reject) => {
         db.get(query, [keyValue], async (err, row) => {
             await dbPool.release(db);
             if (err) {
@@ -94,15 +89,14 @@ export async function getUserByKey(key: string, keyValue: any): Promise<AUser> {
                 );
                 return;
             }
-            const user: AUser | null = await userFromSql(row);
-            if (!user)
+            if (!row)
                 reject(
                     new ApiError(
                         ApiErrorCode.USER_NOT_FOUND,
                         `Impossible de trouver un utilisateur correspondant a ${key} = ${keyValue} dans la base de donnees !`
                     )
                 );
-            resolve(user as AUser);
+            resolve(toCamelCase(row) as IProtectedUser);
         });
     });
 }
@@ -146,19 +140,4 @@ export async function deleteUser(userId: number): Promise<boolean> {
             else resolve(true);
         });
     });
-}
-
-async function userFromSql(row: unknown): Promise<AUser | null> {
-    if (!row) return null;
-    const camelCaseRow = toCamelCase(row);
-    if (!camelCaseRow || !camelCaseRow.id) return null;
-    const authProvider: string = camelCaseRow.authProvider;
-    if (!authProvider) return null;
-    if (authProvider === "LOCAL") {
-        return await LocalUser.fromDatabase(camelCaseRow);
-    }
-    if (authProvider === "EXTERNAL") {
-        return ExternalUser.fromDatabase(camelCaseRow);
-    }
-    return null;
 }

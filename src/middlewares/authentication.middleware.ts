@@ -1,16 +1,17 @@
 import AMiddleware from "../classes/abstracts/AMiddleware";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { IJwtPayload, verifyJWT } from "../utils/jwt.util";
+import { verifyJWT } from "../utils/jwt.util";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { IErrorResponse } from "../interfaces/response.interface";
 import { TokenError } from "fast-jwt";
+import { IPublicUser } from "../interfaces/user.interface";
 
 /**
  * @description Middleware to verify the JWT token and add the user to the request
  */
 declare module "fastify" {
     interface FastifyRequest {
-        publicUser?: IJwtPayload;
+        publicUser?: IPublicUser;
     }
 }
 
@@ -78,7 +79,7 @@ function needTwoFactor(payload: unknown): boolean {
         !payload.hasPassedTwoFactor) as boolean;
 }
 
-function isUserToken(payload: any): payload is IJwtPayload {
+function isUserToken(payload: any): payload is IPublicUser {
     return typeof payload === "object" && payload !== null && "id" in payload;
 }
 

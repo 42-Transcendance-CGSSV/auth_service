@@ -13,7 +13,6 @@ import { registerTokensRoutes } from "./controllers/tokens.controller";
 import AuthenticationMiddleware from "./middlewares/authentication.middleware";
 import { registerAccountRoutes } from "./controllers/account.controller";
 import { clearInterval } from "timers";
-import { registerTotp } from "./controllers/totp.controller";
 
 const app = fastify({
     logger: {
@@ -110,7 +109,6 @@ createDatabase(app)
         await registerAuthRoutes(app);
         await registerTokensRoutes(app);
         await registerAccountRoutes(app);
-        await registerTotp(app);
 
         app.get("/healthcheck", (_req, response) => {
             response.send({ message: "Success" });

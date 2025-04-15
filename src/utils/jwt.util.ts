@@ -3,15 +3,6 @@ import { ApiError, ApiErrorCode } from "./errors.util";
 import { TokenError } from "fast-jwt";
 import { getTimestamp } from "./timestamp.util";
 
-export interface IJwtPayload {
-    id: number;
-    name: string;
-    authProvider: "LOCAL" | "EXTERNAL";
-    verified: boolean;
-    hasTwoFactor: boolean;
-    hasPassedTwoFactor: boolean;
-}
-
 export function generateJWT(app: FastifyInstance, payload: any, expireTime: string): string {
     return app.jwt.sign(payload, {
         clockTimestamp: getTimestamp(),

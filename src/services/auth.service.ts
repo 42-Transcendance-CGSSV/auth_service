@@ -1,28 +1,27 @@
-import LocalUser from "../classes/users/local.user";
 import { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import HashUtil from "../utils/hash.util";
-import { IJwtPayload, verifyJWT } from "../utils/jwt.util";
+import { verifyJWT } from "../utils/jwt.util";
 import { getUserByKey, insertUser } from "../database/repositories/user.repository";
-import AUser from "../classes/abstracts/AUser";
 import { toCamelCase } from "../utils/case.util";
-import ExternalUser from "../classes/users/external.user";
+import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { createExternalUser, createLocalUser } from "../factory/user.factory";
 
-export async function registerUser(req: FastifyRequest): Promise<IJwtPayload> {
+export async function registerUser(req: FastifyRequest): Promise<IPublicUser> {
     if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
 
     const camelCaseRow = toCamelCase(req.body);
     if (camelCaseRow.name && camelCaseRow.email && camelCaseRow.password) {
-        const user = LocalUser.createDefaultAccount(camelCaseRow.name, camelCaseRow.email, camelCaseRow.password);
+        const user: IProtectedUser = await createLocalUser(camelCaseRow.name, camelCaseRow.email, camelCaseRow.password);
         await registerLocalUser(user);
-        return user.toPublicUser();
+        return toPublicUser(user);
     }
-    const externalUser = ExternalUser.createDefaultAccount(camelCaseRow.name, camelCaseRow.email, "EXEMPLE TOKEN");
+    const externalUser = createExternalUser(camelCaseRow.name, camelCaseRow.email, "EXEMPLE TOKEN");
     await registerExternalUser(externalUser);
-    return externalUser.toPublicUser();
+    return toPublicUser(externalUser);
 }
 
-export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IJwtPayload> {
+export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IPublicUser> {
     let alreadyHasJwt: boolean = false;
 
     try {
@@ -43,16 +42,13 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
     const { email, password } = req.body as { email: string; password: string };
 
     try {
-        const user: AUser = await getUserByKey("email", email);
+        const user: IProtectedUser = await getUserByKey("email", email);
 
-        if (user.authProvider !== "LOCAL") {
+        if (user.password === null || typeof user.password === "undefined") {
             throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver un utilisateur ayant ces identifiants !");
         }
 
-        const localUser = user as LocalUser;
-        const samePass: boolean = await HashUtil.comparePasswords(password, localUser.password);
-
-        if (!samePass) {
+        if (!(await HashUtil.comparePasswords(password, user.password))) {
             throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver un utilisateur ayant ces identifiants !");
         }
 
@@ -60,7 +56,7 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
             throw new ApiError(ApiErrorCode.INSUFFICIENT_PERMISSIONS, "Impossible de se connecter a un compte non verifie !");
         }
 
-        return user.toPublicUser();
+        return toPublicUser(user);
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
@@ -69,18 +65,18 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
     }
 }
 
-async function registerLocalUser(localUser: LocalUser): Promise<IJwtPayload> {
+async function registerLocalUser(localUser: IProtectedUser): Promise<IPublicUser> {
     if (!localUser.password) {
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Un mot de passe est requis pour enregistrer un utilisateur local !");
     }
     localUser.id = await insertUser(localUser);
-    return localUser.toPublicUser();
+    return localUser as IPublicUser;
 }
 
-async function registerExternalUser(externalUser: ExternalUser): Promise<IJwtPayload> {
+async function registerExternalUser(externalUser: IProtectedUser): Promise<IPublicUser> {
     if (!externalUser.externalToken) {
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Un token externe est requis pour enregistrer un utilisateur externe !");
     }
     await insertUser(externalUser);
-    return externalUser.toPublicUser();
+    return externalUser as IPublicUser;
 }

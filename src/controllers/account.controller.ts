@@ -6,8 +6,8 @@ import { getPicturePath } from "../database/repositories/pictures.repository";
 import { updatePartialUser } from "../database/repositories/user.repository";
 import HashUtil from "../utils/hash.util";
 import schema from "fluent-json-schema";
-import { IJwtPayload } from "../utils/jwt.util";
 import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
+import { IPublicUser } from "../interfaces/user.interface";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.get("/activate-account", {
@@ -73,7 +73,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     app.get("/get-account/:user", {
         schema: { querystring: getAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            const user: IJwtPayload = await getJwtPayload(req);
+            const user: IPublicUser = await getJwtPayload(req);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
             }

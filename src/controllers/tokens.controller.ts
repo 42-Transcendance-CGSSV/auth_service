@@ -6,6 +6,7 @@ import RefreshToken from "../classes/RefreshToken";
 import { sendAuthCookies } from "../utils/cookies.util";
 import { isTokenValid, updateToken } from "../services/tokens.service";
 import { getUserByKey } from "../database/repositories/user.repository";
+import { IPublicUser } from "../interfaces/user.interface";
 
 export async function registerTokensRoutes(app: FastifyInstance): Promise<void> {
     app.get("/token/decode", {
@@ -43,7 +44,7 @@ export async function registerTokensRoutes(app: FastifyInstance): Promise<void> 
             rep.clearCookie("auth_token");
 
             const updatedToken: RefreshToken = await updateToken(refreshToken);
-            const jwt: string = generateJWT(app, (await getUserByKey("id", updatedToken.getUserId)).toPublicUser(), "5m");
+            const jwt: string = generateJWT(app, (await getUserByKey("id", updatedToken.getUserId)) as IPublicUser, "5m");
             sendAuthCookies(updatedToken, jwt, rep);
             rep.send({
                 success: true,

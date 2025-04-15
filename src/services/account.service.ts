@@ -7,8 +7,8 @@ import { MultipartFile } from "@fastify/multipart";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
-import { IJwtPayload } from "../utils/jwt.util";
 import { sendEmailFromUser } from "../utils/mail.util";
+import { IPublicUser } from "../interfaces/user.interface";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
@@ -78,7 +78,7 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-export async function getJwtPayload(req: FastifyRequest): Promise<IJwtPayload> {
+export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
@@ -98,11 +98,11 @@ export async function getJwtPayload(req: FastifyRequest): Promise<IJwtPayload> {
 
     if (type === "NAME") {
         const user = await getUserByKey("name", value);
-        return user.toPublicUser();
+        return user as IPublicUser;
     }
     if (type === "ID") {
         const user = await getUserByKey("id", value);
-        return user.toPublicUser();
+        return user as IPublicUser;
     }
     throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }
