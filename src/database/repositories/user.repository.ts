@@ -15,7 +15,7 @@ export async function createUsersTable(): Promise<void> {
             external_token TEXT,
             created_at INTEGER NOT NULL,
             verified boolean NOT NULL,
-            totp_secret TEXT
+            totp_secret TEXT DEFAULT NULL
         )`;
 
     const db = await dbPool.acquire();
@@ -106,15 +106,20 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
 
     const values = fieldsToUpdate.map((field) => partialData[field]);
     const filteredFields = fieldsToUpdate.filter((_, index) => values[index] !== null && values[index] !== undefined);
-    const filteredValues = values.filter((value) => value !== null && value !== undefined);
-
     const setClause = filteredFields.map((fField) => `${String(fField)} = ?`).join(", ");
     const query = `UPDATE ${env.DB_USERS_TABLE} SET ${setClause} WHERE id = ?`;
 
+    const filteredValues = values.filter((value) => value !== null && value !== undefined);
     filteredValues.push(userId);
 
+    const finalValues = [];
+    for (let i = 0; i < filteredValues.length; i++) {
+        if (filteredValues[i] === "null") finalValues.push(null);
+        else finalValues.push(filteredValues[i]);
+    }
+
     const db = await dbPool.acquire();
-    db.run(query, filteredValues, (err: Error | null) => {
+    db.run(query, finalValues, (err: Error | null) => {
         dbPool.release(db);
         if (err) throw err;
     });

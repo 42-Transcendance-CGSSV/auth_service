@@ -26,8 +26,8 @@ class AuthenticationMiddleware extends AMiddleware {
         this.addRoute("/logout")
             .addRoute("/token/decode")
             .addRoute("/token/validate")
-            .addRoute("/upload-picture")
-            .addRoute("/update-account")
+            .addRoute("/picture/upload")
+            .addRoute("/picture")
             .addRoute("/totp/toggle")
             .addRoute("/totp/validate");
     }
@@ -73,10 +73,10 @@ function replyWithError(response: FastifyReply, error: Error, errorCode: ApiErro
 function needTwoFactor(payload: unknown): boolean {
     return (typeof payload === "object" &&
         payload !== null &&
-        "hasTwoFactor" in payload &&
-        payload.hasTwoFactor &&
-        "hasPassedTwoFactor" in payload &&
-        !payload.hasPassedTwoFactor) as boolean;
+        "hasTotpProtection" in payload &&
+        payload.hasTotpProtection &&
+        "hasPassedTotp" in payload &&
+        !payload.hasPassedTotp) as boolean;
 }
 
 function isUserToken(payload: any): payload is IPublicUser {

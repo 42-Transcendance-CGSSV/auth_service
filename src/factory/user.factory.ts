@@ -3,7 +3,8 @@ import { getTimestamp } from "../utils/timestamp.util";
 import HashUtil from "../utils/hash.util";
 
 export async function createLocalUser(name: string, email: string, password: string): Promise<IProtectedUser> {
-    return createDefaultUser(-1, name, email, false, await HashUtil.hashPassword(password), null);
+    const hashedPass: string = await HashUtil.hashPassword(password);
+    return createDefaultUser(-1, name, email, false, hashedPass, null);
 }
 
 export function createExternalUser(name: string, email: string, externalToken: string): IProtectedUser {

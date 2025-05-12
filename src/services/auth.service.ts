@@ -2,32 +2,36 @@ import { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import HashUtil from "../utils/hash.util";
 import { verifyJWT } from "../utils/jwt.util";
-import { getUserByKey, insertUser } from "../database/repositories/user.repository";
-import { toCamelCase } from "../utils/case.util";
+import { getUserByKey, insertUser, updatePartialUser } from "../database/repositories/user.repository";
+import { toCamelCase, toSnakeCase } from "../utils/case.util";
 import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
 import { createExternalUser, createLocalUser } from "../factory/user.factory";
+import { generateTotpSecretKey } from "../utils/totp.util";
 
-export async function registerUser(req: FastifyRequest): Promise<IPublicUser> {
+export async function registerUser(req: FastifyRequest): Promise<IProtectedUser> {
     if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
 
     const camelCaseRow = toCamelCase(req.body);
     if (camelCaseRow.name && camelCaseRow.email && camelCaseRow.password) {
         const user: IProtectedUser = await createLocalUser(camelCaseRow.name, camelCaseRow.email, camelCaseRow.password);
         await registerLocalUser(user);
-        return toPublicUser(user);
+        return user;
     }
     const externalUser = createExternalUser(camelCaseRow.name, camelCaseRow.email, "EXEMPLE TOKEN");
     await registerExternalUser(externalUser);
-    return toPublicUser(externalUser);
+    return externalUser;
 }
 
 export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IPublicUser> {
     let alreadyHasJwt: boolean = false;
 
+    //TODO: check if the user is already logged in
+
     try {
         await verifyJWT(app, req);
         alreadyHasJwt = true;
-    } catch {
+    } catch (error) {
+        console.log(error);
         /* empty */
     }
 
@@ -63,6 +67,21 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
         }
         throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, "Une erreur est survenue pendant l'authentification!");
     }
+}
+
+export async function toggleTotp(userId: number): Promise<string | null> {
+    const user = await getUserByKey("id", userId);
+    if (!user) return null;
+    if (user.totpSecret === null) {
+        const key: string = generateTotpSecretKey();
+        const valuesToUpdate: Partial<any> = { totpSecret: key };
+        await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_secret"]);
+        return key;
+    }
+
+    const valuesToUpdate: Partial<any> = { totpSecret: "null" };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_secret"]);
+    return null;
 }
 
 async function registerLocalUser(localUser: IProtectedUser): Promise<IPublicUser> {

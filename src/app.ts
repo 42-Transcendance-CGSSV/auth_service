@@ -11,8 +11,9 @@ import { ApiError } from "./utils/errors.util";
 import { registerAuthRoutes } from "./controllers/auth.controller";
 import { registerTokensRoutes } from "./controllers/tokens.controller";
 import AuthenticationMiddleware from "./middlewares/authentication.middleware";
-import { registerAccountRoutes } from "./controllers/account.controller";
+import { registerAccountRoutes } from "./controllers/accounts.controller";
 import { clearInterval } from "timers";
+import { registerPicturesRoutes } from "./controllers/pictures.controller";
 
 const app = fastify({
     logger: {
@@ -109,6 +110,7 @@ createDatabase(app)
         await registerAuthRoutes(app);
         await registerTokensRoutes(app);
         await registerAccountRoutes(app);
+        await registerPicturesRoutes(app);
 
         app.get("/healthcheck", (_req, response) => {
             response.send({ message: "Success" });

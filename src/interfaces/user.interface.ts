@@ -16,15 +16,15 @@ export interface IProtectedUser extends IPublicUser {
     totpSecret: string | null;
 }
 
-export function toPublicUser<T extends IPublicUser>(objet: T): IPublicUser {
+export function toPublicUser(objet: IProtectedUser): IPublicUser {
     return {
         id: objet.id,
         name: objet.name,
         verified: objet.verified,
         email: objet.email,
         createdAt: objet.createdAt,
-        hasTotpProtection: objet.hasTotpProtection,
-        hasPassedTotp: objet.hasPassedTotp,
-        isExternal: "password" in objet
+        hasTotpProtection: objet.totpSecret != null,
+        hasPassedTotp: objet.totpSecret != null && objet.hasPassedTotp ? true : false,
+        isExternal: !("password" in objet)
     };
 }
