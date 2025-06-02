@@ -30,8 +30,7 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
     try {
         await verifyJWT(app, req);
         alreadyHasJwt = true;
-    } catch (error) {
-        console.log(error);
+    } catch {
         /* empty */
     }
 

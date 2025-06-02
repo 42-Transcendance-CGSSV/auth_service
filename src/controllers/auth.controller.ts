@@ -101,7 +101,9 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
                 success: true,
                 message: message,
                 data: {
+                    // eslint-disable-next-line camelcase
                     totp_secret: callback,
+                    // eslint-disable-next-line camelcase
                     qr_code: callback ? await generateTotpQrCode(callback, req.publicUser.name) : null,
                     token: newToken
                 }

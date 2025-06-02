@@ -76,8 +76,6 @@ async function start(): Promise<void> {
         secret: env.JWT_SECRET as string
     });
 
-    console.log(env.BREVO_API_KEY);
-
     app.setErrorHandler((error, _request, reply) => {
         if (error.name === "ApiError") {
             reply.code((error as ApiError).getHttpStatusCode()).send({
@@ -99,7 +97,7 @@ async function start(): Promise<void> {
     new AuthenticationMiddleware().register(app);
 
     await app.listen({
-        port: Number(env.PORT),
+        port: 3000,
         host: "0.0.0.0"
     });
 }
