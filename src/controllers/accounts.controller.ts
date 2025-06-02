@@ -1,17 +1,14 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { activateAccount, changeAccountPicture, getUser } from "../services/account.service";
+import { activateAccount, getJwtPayload } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
-import { getPicturePath } from "../database/repositories/pictures.repository";
 import { updatePartialUser } from "../database/repositories/user.repository";
-import { updateSchema } from "../schemas/update.schema";
 import HashUtil from "../utils/hash.util";
-import schema from "fluent-json-schema";
-import { getAccountSchema } from "../schemas/getaccount.schema";
+import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
 import { IPublicUser } from "../interfaces/user.interface";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
-    app.post("/activate-account", {
+    app.get("/activate-account", {
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
             await activateAccount(req);
             await rep.send({
@@ -21,41 +18,8 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
         }
     });
 
-    app.post("/upload-picture", {
-        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            if (!req.publicUser) return;
-
-            const data = await req.file({
-                limits: {
-                    files: 1,
-                    fileSize: 1048576 * 3 // 3 Mo
-                }
-            });
-            await changeAccountPicture(data, req.publicUser.id);
-            return rep.send({
-                success: true,
-                message: "Le fichier a bien ete enregistre "
-            } as ISuccessResponse);
-        }
-    });
-
-    app.get("/get-picture/:userId", {
-        schema: {
-            querystring: schema.object().prop("userId", schema.number()).required()
-        },
-        handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            const userId = (req.query as { userId: number }).userId;
-
-            return rep.send({
-                success: true,
-                message: `Voici le path de la photo de profil de l'utilisateur ${userId}`,
-                data: await getPicturePath(userId)
-            } as ISuccessResponse);
-        }
-    });
-
     app.patch("/update-account", {
-        schema: { body: updateSchema },
+        schema: { body: updateAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
             if (!req.publicUser) return;
             if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
@@ -74,7 +38,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     app.get("/get-account/:user", {
         schema: { querystring: getAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            const user: IPublicUser = await getUser(req);
+            const user: IPublicUser = await getJwtPayload(req);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
             }

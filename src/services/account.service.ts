@@ -1,17 +1,28 @@
 import { generateUUID } from "../utils/uuid.util";
 import { deleteVerificationToken, getVerificationToken, insertVerificationToken } from "../database/repositories/verification.repository";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
-import { FastifyRequest } from "fastify";
-import { activateUser, getUserById, getUserByName } from "../database/repositories/user.repository";
+import { FastifyInstance, FastifyRequest } from "fastify";
+import { activateUser, getUserByKey } from "../database/repositories/user.repository";
 import { MultipartFile } from "@fastify/multipart";
 import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
-import { IPublicUser } from "../interfaces/user.interface";
+import { sendEmailFromUser } from "../utils/mail.util";
+import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
 
-export async function sendVerificationToken(userId: number): Promise<void> {
-    await createVerificationToken(userId);
-    //TODO: send email !
+export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
+    const token = await createVerificationToken(userId);
+    const promiseMail = sendEmailFromUser(3, { TOKEN: token }, userId, "Verification de votre compte ft_transcendence !");
+    return promiseMail
+        .then(() => {
+            return true;
+        })
+        .catch(async (err: Error) => {
+            app.log.error("Unable to send verification email for account activation " + err.message + ":" + err.name);
+            await deleteVerificationToken(token);
+            await activateUser(userId);
+            return false;
+        });
 }
 
 export async function createVerificationToken(userId: number): Promise<string> {
@@ -26,6 +37,9 @@ export async function createVerificationToken(userId: number): Promise<string> {
 }
 
 export async function activateAccount(req: FastifyRequest): Promise<void> {
+    if (!req.query || typeof req.query !== "object") {
+        throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un token dans la requete !");
+    }
     const { token } = req.query as { token: string };
     if (!token) {
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Le token est necessaire pour l'activation du compte");
@@ -64,7 +78,7 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-export async function getUser(req: FastifyRequest): Promise<IPublicUser> {
+export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
@@ -83,22 +97,12 @@ export async function getUser(req: FastifyRequest): Promise<IPublicUser> {
     }
 
     if (type === "NAME") {
-        const user = await getUserByName(value as string);
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            verified: user.verified
-        } as unknown as IPublicUser;
+        const user = await getUserByKey("name", value);
+        return toPublicUser(user);
     }
     if (type === "ID") {
-        const user = await getUserById(value as number);
-        return {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            verified: user.verified
-        } as unknown as IPublicUser;
+        const user = await getUserByKey("id", value);
+        return toPublicUser(user);
     }
     throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }

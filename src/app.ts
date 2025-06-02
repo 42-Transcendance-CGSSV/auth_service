@@ -11,8 +11,9 @@ import { ApiError } from "./utils/errors.util";
 import { registerAuthRoutes } from "./controllers/auth.controller";
 import { registerTokensRoutes } from "./controllers/tokens.controller";
 import AuthenticationMiddleware from "./middlewares/authentication.middleware";
-import { registerAccountRoutes } from "./controllers/account.controller";
-import { clearInterval } from "node:timers";
+import { registerAccountRoutes } from "./controllers/accounts.controller";
+import { clearInterval } from "timers";
+import { registerPicturesRoutes } from "./controllers/pictures.controller";
 
 const app = fastify({
     logger: {
@@ -45,7 +46,6 @@ const app = fastify({
     },
     disableRequestLogging: true
 });
-dotenv.config();
 
 const listeners: string[] = ["SIGINT", "SIGTERM"];
 listeners.forEach((signal): void => {
@@ -66,6 +66,8 @@ listeners.forEach((signal): void => {
         process.exit(0);
     });
 });
+
+dotenv.config();
 
 async function start(): Promise<void> {
     app.register(fastifyCookie);
@@ -95,7 +97,7 @@ async function start(): Promise<void> {
     new AuthenticationMiddleware().register(app);
 
     await app.listen({
-        port: Number(env.PORT),
+        port: 3000,
         host: "0.0.0.0"
     });
 }
@@ -106,6 +108,8 @@ createDatabase(app)
         await registerAuthRoutes(app);
         await registerTokensRoutes(app);
         await registerAccountRoutes(app);
+        await registerPicturesRoutes(app);
+
         app.get("/healthcheck", (_req, response) => {
             response.send({ message: "Success" });
         });

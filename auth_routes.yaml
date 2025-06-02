@@ -12,9 +12,11 @@ tags:
     description: Everything about Auth
   - name: Token
     description: Token management operations
+  - name: Account
+    description: Account management operations
 
 paths:
-  /api/auth/register:
+  /register:
     post:
       tags:
         - Auth
@@ -37,7 +39,7 @@ paths:
         "500":
           description: "Server error"
 
-  /api/auth/login:
+  /login:
     post:
       tags:
         - Auth
@@ -60,13 +62,13 @@ paths:
         "500":
           description: "Server error"
 
-  /api/auth/logout:
+  /logout:
     post:
       tags:
         - Auth
       description: "Logout the current user"
       security:
-        - bearerAuth: []
+        - bearerAuth: [ ]
       responses:
         "200":
           description: "User logged out successfully"
@@ -79,10 +81,10 @@ paths:
         "500":
           description: "Server error"
 
-  /api/auth/refresh-token:
+  /token/refresh:
     post:
       tags:
-        - Auth
+        - Token
       description: "Refresh the access token"
       responses:
         "200":
@@ -91,60 +93,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefreshTokenResponse'
-        "401":
-          description: "Invalid refresh token"
-        "500":
-          description: "Server error"
-
-  /api/auth/activate-account:
-    post:
-      tags:
-        - Auth
-      description: "Activate user account"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ActivateAccount'
-      responses:
-        "200":
-          description: "Account activated successfully"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SuccessResponse'
         "400":
-          description: "Invalid activation token"
+          description: "Missing refresh token"
+        "401":
+          description: "Invalid or expired refresh token"
         "500":
           description: "Server error"
-
-  /api/token/decode:
+  /token/decode:
     get:
       tags:
         - Token
-      description: "Decode and validate JWT token"
-      security:
-        - bearerAuth: []
+      description: "Decode the token and retrieve user information"
       responses:
         "200":
           description: "Token decoded successfully"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenDecodeResponse'
+                $ref: '#/components/schemas/SuccessResponse'
         "401":
           description: "Invalid token"
         "500":
           description: "Server error"
-
-  /api/token/validate:
+  /token/validate:
     get:
       tags:
         - Token
-      description: "Validate JWT token"
-      security:
-        - bearerAuth: []
+      description: "Validate the token"
       responses:
         "200":
           description: "Token is valid"
@@ -156,140 +131,150 @@ paths:
           description: "Invalid token"
         "500":
           description: "Server error"
+  /api/account/activate-account:
+    post:
+      tags:
+        - Account
+      description: "Activate a user account"
+      responses:
+        "200":
+          description: "Account activated successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "500":
+          description: "Server error"
+
+  /api/account/upload-picture:
+    post:
+      tags:
+        - Account
+      description: "Upload a profile picture"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: "Picture uploaded successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: "Invalid file"
+        "500":
+          description: "Server error"
+
+  /api/account/get-picture/{userId}:
+    get:
+      tags:
+        - Account
+      description: "Get the profile picture path of a user"
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Profile picture path retrieved successfully"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        "400":
+          description: "Invalid user ID"
+        "500":
+          description: "Server error"
 
 components:
   schemas:
     LocalUserRegister:
       type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
       required:
         - name
         - email
         - password
-      properties:
-        name:
-          type: string
-          minLength: 4
-          pattern: "^[A-Za-z]+$"
-          example: "vSKAH"
-        email:
-          type: string
-          format: email
-          example: "jbadaire@student.42lyon.fr"
-        password:
-          type: string
-          minLength: 8
-          format: password
-          example: "Password123!"
 
     LocalUserLogin:
       type: object
-      required:
-        - email
-        - password
       properties:
         email:
           type: string
           format: email
-          example: "jbadaire@student.42lyon.fr"
         password:
           type: string
-          minLength: 8
           format: password
-          example: "Password123!"
-
-    ActivateAccount:
-      type: object
       required:
-        - token
-      properties:
-        token:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        - email
+        - password
 
     SuccessResponse:
       type: object
       properties:
         success:
           type: boolean
-          example: true
         message:
           type: string
-          example: "Operation successful"
 
     LoginResponse:
       type: object
       properties:
         success:
           type: boolean
-          example: true
         data:
           type: object
           properties:
             user_data:
-              $ref: '#/components/schemas/User'
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                auth_provider:
+                  type: string
+                created_at:
+                  type: string
+                  format: date-time
+                updated_at:
+                  type: string
+                  format: date-time
             token:
               type: string
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         message:
           type: string
-          example: "User logged"
 
     RefreshTokenResponse:
       type: object
       properties:
         success:
           type: boolean
-          example: true
         data:
           type: object
           properties:
             token:
               type: string
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         message:
           type: string
-          example: "Refresh Token updated !"
-
-    TokenDecodeResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-        data:
-          $ref: '#/components/schemas/User'
-        message:
-          type: string
-          example: "Ce token est valide, les informations contenues dedans ont été décodées !"
-
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          example: "123e4567-e89b-12d3-a456-426614174000"
-        name:
-          type: string
-          example: "vSKAH"
-        email:
-          type: string
-          format: email
-          example: "jbadaire@student.42lyon.fr"
-        auth_provider:
-          type: string
-          enum: [ local, google ]
-          example: "local"
-        created_at:
-          type: string
-          format: date-time
-          example: "2024-03-20T10:00:00Z"
-        updated_at:
-          type: string
-          format: date-time
-          example: "2024-03-20T10:00:00Z"
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT

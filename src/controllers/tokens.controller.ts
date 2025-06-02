@@ -1,12 +1,12 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { generateJWT } from "../utils/jwt.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
-import { IPublicUser } from "../interfaces/user.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import RefreshToken from "../classes/RefreshToken";
-import { getUserById } from "../database/repositories/user.repository";
 import { sendAuthCookies } from "../utils/cookies.util";
 import { isTokenValid, updateToken } from "../services/tokens.service";
+import { getUserByKey } from "../database/repositories/user.repository";
+import { toPublicUser } from "../interfaces/user.interface";
 
 export async function registerTokensRoutes(app: FastifyInstance): Promise<void> {
     app.get("/token/decode", {
@@ -44,8 +44,7 @@ export async function registerTokensRoutes(app: FastifyInstance): Promise<void> 
             rep.clearCookie("auth_token");
 
             const updatedToken: RefreshToken = await updateToken(refreshToken);
-            const fetchedUser: IPublicUser = (await getUserById(updatedToken.getUserId)) as IPublicUser;
-            const jwt: string = generateJWT(app, fetchedUser, "5m");
+            const jwt: string = generateJWT(app, toPublicUser(await getUserByKey("id", updatedToken.getUserId)), "5m");
             sendAuthCookies(updatedToken, jwt, rep);
             rep.send({
                 success: true,
