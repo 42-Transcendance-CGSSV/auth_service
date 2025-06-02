@@ -1,0 +1,55 @@
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { activateAccount, getJwtPayload } from "../services/account.service";
+import { ISuccessResponse } from "../interfaces/response.interface";
+import { ApiError, ApiErrorCode } from "../utils/errors.util";
+import { updatePartialUser } from "../database/repositories/user.repository";
+import HashUtil from "../utils/hash.util";
+import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
+import { IPublicUser } from "../interfaces/user.interface";
+
+export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
+    app.get("/activate-account", {
+        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            await activateAccount(req);
+            await rep.send({
+                success: true,
+                message: "Ce compte a ete active !"
+            } as ISuccessResponse);
+        }
+    });
+
+    app.patch("/update-account", {
+        schema: { body: updateAccountSchema },
+        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
+            if (!req.publicUser) return;
+            if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
+            const fieldsToUpdate = ["name", "email", "password", "external_token"];
+            if (req.body && typeof req.body === "object" && "password" in req.body && typeof req.body.password === "string") {
+                req.body.password = await HashUtil.hashPassword(req.body.password);
+            }
+            await updatePartialUser(req.publicUser.id, req.body, fieldsToUpdate);
+            return rep.send({
+                success: true,
+                message: "Le compte a bien ete mis a jour !"
+            } as ISuccessResponse);
+        }
+    });
+
+    app.get("/get-account/:user", {
+        schema: { querystring: getAccountSchema },
+        handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
+            const user: IPublicUser = await getJwtPayload(req);
+            if (!user) {
+                throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
+            }
+
+            return rep.send({
+                success: true,
+                message: `Voici les informations de l'utilisateur`,
+                data: user
+            } as ISuccessResponse);
+        }
+    });
+
+    app.log.info("| Account routes registered");
+}
