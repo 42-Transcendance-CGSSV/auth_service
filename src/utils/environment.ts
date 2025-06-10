@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
 export const env = {
     ENVIRONMENT: process.env.ENVIRONMENT || "DEVELOPMENT",
     LOG_LEVEL: process.env.LOG_LEVEL || "debug",

@@ -1,5 +1,4 @@
 import fastify from "fastify";
-import dotenv from "dotenv";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCookie from "fastify-cookie";
 import fastifyMultipart from "@fastify/multipart";
@@ -66,8 +65,6 @@ listeners.forEach((signal): void => {
         process.exit(0);
     });
 });
-
-dotenv.config();
 
 async function start(): Promise<void> {
     app.register(fastifyCookie);
