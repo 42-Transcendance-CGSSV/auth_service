@@ -1,12 +1,25 @@
-FROM node:23.10.0
+FROM node:alpine3.22 AS builder
 LABEL authors="jbadaire"
 
 WORKDIR /app
 
-COPY output /app/compiled
-COPY package.json /app
-COPY package-lock.json /app
-RUN npm install
+COPY . /app
+RUN npm config set registry https://registry.npmjs.org/
+RUN npm install -D
+RUN npm run build
+
+RUN mkdir -p /app/compiled
+RUN cp -r /app/output/* /app/compiled/
+
+FROM node:alpine3.22
+
+WORKDIR /app
+
+COPY --from=builder /app/output /app/compiled
+
+COPY --from=builder /app/package.json /app
+COPY --from=builder /app/package-lock.json /app
+
+RUN npm config set registry https://registry.npmjs.org/ && npm ci --omit=dev
 
 ENTRYPOINT ["node" ,"compiled/app.js"]
-#TODO: create a small image

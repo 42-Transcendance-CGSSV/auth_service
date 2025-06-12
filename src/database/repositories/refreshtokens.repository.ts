@@ -1,5 +1,4 @@
 import { dbPool } from "../database";
-import { env } from "../../utils/environment";
 import RefreshToken from "../../classes/RefreshToken";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { FastifyInstance } from "fastify";
@@ -7,7 +6,7 @@ import { FastifyInstance } from "fastify";
 export async function createTokensTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
-        CREATE TABLE IF NOT EXISTS ${env.DB_TOKENS_TABLE} 
+        CREATE TABLE IF NOT EXISTS DB_TOKENS_TABLE 
         (
             token_id INTEGER UNIQUE PRIMARY KEY,
             user_id INTEGER NOT NULL, 
@@ -31,7 +30,7 @@ export async function createTokensTable(app: FastifyInstance): Promise<void> {
 }
 
 export async function insertToken(token: RefreshToken): Promise<void> {
-    const query = `INSERT INTO ${env.DB_TOKENS_TABLE} (token_id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO DB_TOKENS_TABLE (token_id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`;
 
     const db = await dbPool.acquire();
     db.run(query, [null, token.getUserId, token.getToken, token.getExpireAt, token.getCreatedAt], function (err) {
@@ -41,7 +40,7 @@ export async function insertToken(token: RefreshToken): Promise<void> {
 }
 
 export async function getToken(token: string): Promise<RefreshToken> {
-    const query = `SELECT * FROM ${env.DB_TOKENS_TABLE} WHERE token = ?`;
+    const query = `SELECT * FROM DB_TOKENS_TABLE WHERE token = ?`;
     const db = await dbPool.acquire();
     return new Promise<RefreshToken>((resolve, reject) => {
         db.get(query, [token], (err, row) => {
@@ -59,7 +58,7 @@ export async function getToken(token: string): Promise<RefreshToken> {
 }
 
 export async function evictExpiredTokens(): Promise<void> {
-    const query = `DELETE FROM ${env.DB_TOKENS_TABLE} WHERE strftime('%s', 'now') > expires_at`;
+    const query = `DELETE FROM DB_TOKENS_TABLE WHERE strftime('%s', 'now') > expires_at`;
     const db = await dbPool.acquire();
     db.run(query, function (err) {
         dbPool.release(db);
@@ -69,7 +68,7 @@ export async function evictExpiredTokens(): Promise<void> {
 
 export async function deleteToken(token: string): Promise<boolean> {
     const query = `DELETE
-                   FROM ${env.DB_TOKENS_TABLE}
+                   FROM DB_TOKENS_TABLE
                    WHERE token = ?`;
 
     const db = await dbPool.acquire();
