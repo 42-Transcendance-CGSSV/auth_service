@@ -5,7 +5,7 @@ import { IProtectedUser } from "../../interfaces/user.interface";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
-    const query = `CREATE TABLE IF NOT EXISTS DB_USERS_TABLE
+    const query = `CREATE TABLE IF NOT EXISTS users
         (
             id INTEGER PRIMARY KEY,
             name VARCHAR(16) NOT NULL UNIQUE,
@@ -25,7 +25,7 @@ export async function createUsersTable(): Promise<void> {
 }
 
 export async function insertUser(user: IProtectedUser): Promise<number> {
-    const query = `INSERT INTO DB_USERS_TABLE (id, name, email, password, external_token, created_at, verified, totp_secret)
+    const query = `INSERT INTO users (id, name, email, password, external_token, created_at, verified, totp_secret)
                    VALUES (?, ?, ?, ?, ?, ?, ?,?)`;
 
     const db = await dbPool.acquire();
@@ -52,7 +52,7 @@ export async function insertUser(user: IProtectedUser): Promise<number> {
 }
 
 export async function userExists(email: string, username: string): Promise<boolean> {
-    const query = `SELECT EXISTS(SELECT 1 FROM DB_USERS_TABLE WHERE email = ? OR name = ?) AS userExists;`;
+    const query = `SELECT EXISTS(SELECT 1 FROM users WHERE email = ? OR name = ?) AS userExists;`;
 
     const db = await dbPool.acquire();
 
@@ -72,7 +72,7 @@ export async function userExists(email: string, username: string): Promise<boole
 }
 
 export async function getUserByKey(key: string, keyValue: any): Promise<IProtectedUser> {
-    const query = `SELECT * FROM DB_USERS_TABLE WHERE ${key} = ?`;
+    const query = `SELECT * FROM users WHERE ${key} = ?`;
 
     const db = await dbPool.acquire();
 
@@ -106,7 +106,7 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
     const values = fieldsToUpdate.map((field) => partialData[field]);
     const filteredFields = fieldsToUpdate.filter((_, index) => values[index] !== null && values[index] !== undefined);
     const setClause = filteredFields.map((fField) => `${String(fField)} = ?`).join(", ");
-    const query = `UPDATE DB_USERS_TABLE SET ${setClause} WHERE id = ?`;
+    const query = `UPDATE users SET ${setClause} WHERE id = ?`;
 
     const filteredValues = values.filter((value) => value !== null && value !== undefined);
     filteredValues.push(userId);
@@ -125,7 +125,7 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
 }
 
 export async function activateUser(userId: number): Promise<void> {
-    const query: string = `UPDATE DB_USERS_TABLE SET verified = 1 WHERE id = ?`;
+    const query: string = `UPDATE users SET verified = 1 WHERE id = ?`;
     const db = await dbPool.acquire();
 
     db.run(query, [userId], (err: Error | null) => {
@@ -135,7 +135,7 @@ export async function activateUser(userId: number): Promise<void> {
 }
 
 export async function deleteUser(userId: number): Promise<boolean> {
-    const query = `DELETE FROM DB_USERS_TABLE WHERE id = ?`;
+    const query = `DELETE FROM users WHERE id = ?`;
     const db = await dbPool.acquire();
     return new Promise<boolean>((resolve, reject) => {
         db.run(query, [userId], function (err) {

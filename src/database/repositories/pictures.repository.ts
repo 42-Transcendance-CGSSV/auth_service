@@ -1,5 +1,4 @@
 import { dbPool } from "../database";
-import { env } from "../../utils/environment";
 import { FastifyInstance } from "fastify";
 import { getTimestamp } from "../../utils/timestamp.util";
 
@@ -38,7 +37,7 @@ export async function updatePicturePath(userId: number, picturePath: string): Pr
 }
 
 export async function getPicturePath(userId: number): Promise<string> {
-    const query = `SELECT picture_path FROM picturesWHERE user_id = ?`;
+    const query = `SELECT picture_path FROM pictures WHERE user_id = ?`;
     const db = await dbPool.acquire();
     return new Promise<string>((resolve) => {
         db.get(query, userId, (err, row) => {
