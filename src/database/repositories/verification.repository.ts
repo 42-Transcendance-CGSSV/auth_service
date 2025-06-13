@@ -1,12 +1,11 @@
 import { dbPool } from "../database";
-import { env } from "../../utils/environment";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { FastifyInstance } from "fastify";
 
 export async function createVerificationTokenTable(app: FastifyInstance): Promise<void> {
     //@formatter:off
     const query = `
-        CREATE TABLE IF NOT EXISTS ${env.DB_VERIFICATIONS_TABLE} 
+        CREATE TABLE IF NOT EXISTS account_verification 
         (
             user_id INTEGER UNIQUE PRIMARY KEY NOT NULL, 
             verification_token TEXT NOT NULL UNIQUE, 
@@ -33,7 +32,7 @@ export async function createVerificationTokenTable(app: FastifyInstance): Promis
 }
 
 export async function insertVerificationToken(userId: number, token: string): Promise<void> {
-    const query = `INSERT INTO ${env.DB_VERIFICATIONS_TABLE} (user_id, verification_token)
+    const query = `INSERT INTO account_verification (user_id, verification_token)
                    VALUES (?, ?)`;
 
     const db = await dbPool.acquire();
@@ -51,7 +50,7 @@ export async function insertVerificationToken(userId: number, token: string): Pr
 
 export async function getVerificationToken(userId: number): Promise<string> {
     const query = `SELECT verification_token
-                   FROM ${env.DB_VERIFICATIONS_TABLE}
+                   FROM account_verification
                    WHERE user_id = ?`;
     const db = await dbPool.acquire();
     return new Promise<string>((resolve, reject) => {
@@ -78,7 +77,7 @@ export async function getVerificationToken(userId: number): Promise<string> {
 
 export async function deleteVerificationToken(token: string): Promise<void> {
     const query = `DELETE
-                   FROM ${env.DB_VERIFICATIONS_TABLE}
+                   FROM account_verification
                    WHERE verification_token = ?`;
 
     const db = await dbPool.acquire();
