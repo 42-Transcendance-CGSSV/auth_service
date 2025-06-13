@@ -4,7 +4,6 @@ LABEL authors="jbadaire"
 WORKDIR /app
 
 COPY . /app
-RUN npm config set registry https://registry.npmjs.org/
 RUN npm install -D
 RUN npm run build
 
@@ -20,6 +19,6 @@ COPY --from=builder /app/output /app/compiled
 COPY --from=builder /app/package.json /app
 COPY --from=builder /app/package-lock.json /app
 
-RUN npm config set registry https://registry.npmjs.org/ && npm ci --omit=dev
+RUN npm ci --omit=dev
 
 ENTRYPOINT ["node" ,"compiled/app.js"]
