@@ -37,7 +37,7 @@ export function buildRefreshTokenCookie(refreshToken: RefreshToken, rep: Fastify
             secure: env.ENVIRONMENT === "PRODUCTION",
             sameSite: "strict",
             maxAge: addDays(getTimestamp(), 30),
-            path: "/token/refresh"
+            path: "/"
         }
     };
     const cookie: string = buildCookie(cookieType);

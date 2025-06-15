@@ -4,7 +4,7 @@ import HashUtil from "../utils/hash.util";
 
 export async function createLocalUser(name: string, email: string, password: string): Promise<IProtectedUser> {
     const hashedPass: string = await HashUtil.hashPassword(password);
-    return createDefaultUser(-1, name, email, false, hashedPass, null);
+    return createDefaultUser(-1, name, email.toLowerCase(), false, hashedPass, null);
 }
 
 export function createExternalUser(name: string, email: string, externalToken: string): IProtectedUser {

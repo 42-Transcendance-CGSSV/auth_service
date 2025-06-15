@@ -45,7 +45,7 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
     const { email, password } = req.body as { email: string; password: string };
 
     try {
-        const user: IProtectedUser = await getUserByKey("email", email);
+        const user: IProtectedUser = await getUserByKey("email", email.toLowerCase());
 
         if (user.password === null || typeof user.password === "undefined") {
             throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver un utilisateur ayant ces identifiants !");
