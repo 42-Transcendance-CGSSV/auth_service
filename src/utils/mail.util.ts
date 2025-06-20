@@ -12,7 +12,7 @@ export async function sendEmail(templateId: number, params: object, name: string
     sendSmtpEmail.to = [
         {
             email: email,
-            name: name
+            name: name,
         }
     ];
     sendSmtpEmail.params = params;

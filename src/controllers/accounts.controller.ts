@@ -6,6 +6,8 @@ import { updatePartialUser } from "../database/repositories/user.repository";
 import HashUtil from "../utils/hash.util";
 import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
 import { IPublicUser } from "../interfaces/user.interface";
+import schema from "fluent-json-schema";
+import { needVerification } from "../database/repositories/verification.repository";
 
 export async function registerAccountRoutes(app: FastifyInstance): Promise<void> {
     app.get("/activate-account", {
@@ -14,6 +16,19 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
             await rep.send({
                 success: true,
                 message: "Ce compte a ete active !"
+            } as ISuccessResponse);
+        }
+    });
+
+    app.get("/need-activation/:userId", {
+        schema: { querystring: schema.object().prop("user_id", schema.number().minimum(0)).required() },
+        handler: async (req: FastifyRequest, rep: FastifyReply) => {
+            const userId = (req.query as { userId: number }).userId;
+            const needActivation = await needVerification(userId);
+            await rep.send({
+                success: true,
+                // eslint-disable-next-line camelcase
+                data: { need_activation: needActivation }
             } as ISuccessResponse);
         }
     });

@@ -18,6 +18,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             const publicUser: IProtectedUser = await registerUser(req);
             const needVerification = await sendVerificationToken(publicUser.id, app);
             publicUser.verified = !needVerification;
+            const jwt: string = generateJWT(app, publicUser, "5m");
+            const refreshToken: string | null = req.cookies["refresh_token"] || null;
+            const refreshTokenObj = !refreshToken ? await createRefreshToken(publicUser.id) : await updateToken(refreshToken);
+            sendAuthCookies(refreshTokenObj, jwt, rep);
             rep.send({
                 success: true,
                 data: toPublicUser(publicUser),

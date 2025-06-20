@@ -37,7 +37,7 @@ export async function insertVerificationToken(userId: number, token: string): Pr
 
     const db = await dbPool.acquire();
     return new Promise<void>((resolve, reject) => {
-        db.run(query, [userId, token], function (err) {
+        db.run(query, [userId, token], function(err) {
             dbPool.release(db);
             if (err) {
                 reject(err);
@@ -71,6 +71,21 @@ export async function getVerificationToken(userId: number): Promise<string> {
             }
 
             resolve(typedRow.verification_token);
+        });
+    });
+}
+
+export async function needVerification(userId: number): Promise<boolean> {
+    const query = `SELECT EXISTS (SELECT 1 FROM account_verification WHERE user_id = ?) AS exists_flag;`;
+    const db = await dbPool.acquire();
+    return new Promise<boolean>((resolve, reject) => {
+        db.get(query, [userId], (err, rows: { exists_flag: boolean }) => {
+            dbPool.release(db);
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(rows.exists_flag);
         });
     });
 }

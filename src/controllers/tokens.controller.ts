@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { generateJWT } from "../utils/jwt.util";
+import { generateJWT, verifyJWT } from "../utils/jwt.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import RefreshToken from "../classes/RefreshToken";
@@ -11,10 +11,11 @@ import { toPublicUser } from "../interfaces/user.interface";
 export async function registerTokensRoutes(app: FastifyInstance): Promise<void> {
     app.get("/token/decode", {
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            if (!req.publicUser) return;
+            const payload = await verifyJWT(app, req);
+            if (!payload) throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Unable to check the JWT");
             return rep.send({
                 success: true,
-                data: req.publicUser,
+                data: payload,
                 message: "Ce token est valide, les informations contenues dedans ont été décodées !"
             } as ISuccessResponse);
         }

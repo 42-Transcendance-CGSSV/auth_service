@@ -23,9 +23,7 @@ declare module "fastify" {
 class AuthenticationMiddleware extends AMiddleware {
     public constructor() {
         super();
-        this.addRoute("/logout")
-            .addRoute("/token/decode")
-            .addRoute("/token/validate")
+        this.addRoute("/token/validate")
             .addRoute("/picture/upload")
             .addRoute("/picture")
             .addRoute("/totp/toggle")
@@ -39,6 +37,7 @@ class AuthenticationMiddleware extends AMiddleware {
      * @param response Fastify response
      */
     public async handleRequest(app: FastifyInstance, request: FastifyRequest, response: FastifyReply): Promise<boolean> {
+        app.log.info("middleintercepter: " + request.url);
         try {
             request.publicUser = undefined;
             const payload = await verifyJWT(app, request);
@@ -47,6 +46,10 @@ class AuthenticationMiddleware extends AMiddleware {
                 throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le JWT n'est pas valide !");
             }
 
+            if (needEmailVerification(payload) && request.url !== "/activate-account")
+                throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez dabord verifier votre compte");
+
+            //todo: check if mail if verified
             if (needTwoFactor(payload) && request.url !== "/totp/validate") {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
             }
@@ -68,6 +71,10 @@ function replyWithError(response: FastifyReply, error: Error, errorCode: ApiErro
         errorCode: errorCode,
         message: error.message
     } as IErrorResponse);
+}
+
+function needEmailVerification(payload: unknown): boolean {
+    return (typeof payload === "object" && payload !== null && "verified" in payload && !payload.verified) as boolean;
 }
 
 function needTwoFactor(payload: unknown): boolean {

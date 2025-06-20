@@ -9,10 +9,11 @@ import { updatePicturePath } from "../database/repositories/pictures.repository"
 import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
 import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import {env} from "../utils/environment";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
-    const promiseMail = sendEmailFromUser(3, { TOKEN: token }, userId, "Verification de votre compte ft_transcendence !");
+    const promiseMail = sendEmailFromUser(3, { TOKEN: token, IP: env.IP, NGINX_PORT: env.NGINX_PORT }, userId, "Verification de votre compte ft_transcendence !");
     return promiseMail
         .then(() => {
             return true;
@@ -36,7 +37,7 @@ export async function createVerificationToken(userId: number): Promise<string> {
     return Promise.resolve(token);
 }
 
-export async function activateAccount(req: FastifyRequest): Promise<void> {
+export async function activateAccount(req: FastifyRequest): Promise<number | null> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un token dans la requete !");
     }
@@ -49,12 +50,13 @@ export async function activateAccount(req: FastifyRequest): Promise<void> {
 
     if (result) {
         try {
-            await activateUser(Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number);
+            const userId = Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number;
+            await activateUser(userId);
             await deleteVerificationToken(token);
+            return userId;
         } catch {
             throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
         }
-        return;
     }
     throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
 }
@@ -112,7 +114,7 @@ export async function changeAccountPicture(multipart: MultipartFile | undefined,
         throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Aucun fichier n'a été envoyé");
     }
     const path: string = "./data/static/profiles_pictures/uploads/" + generateUUID() + "." + multipart.filename.split(".")[1];
-    const buffer: Buffer<ArrayBuffer> = await multipart.toBuffer();
+    const buffer: Buffer = await multipart.toBuffer();
 
     if (multipart.file.truncated) {
         throw new ApiError(ApiErrorCode.INVALID_FILE_SIZE, "Ce fichier est trop lourd !");
