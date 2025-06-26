@@ -115,16 +115,16 @@ export async function useTotpBackupCode(userId: number, backupCode: string): Pro
         .filter((code: string) => code !== backupCode)
         .join(",");
 
-    const valuesToUpdate: Partial<any> = { totpBackup: updatedBackupCodes };
-    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_backup"]);
+    const valuesToUpdate: Partial<any> = { totpBackupCodes: updatedBackupCodes.length > 0 ? updatedBackupCodes : null };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_backup_codes"]);
 }
 
 export async function disableTotpProtection(userId: number): Promise<void> {
     const user = await getUserByKey("id", userId);
     if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur avec cet ID !");
 
-    const valuesToUpdate: Partial<any> = { totpEnabled: false };
-    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_enabled"]);
+    const valuesToUpdate: Partial<any> = { totpEnabled: false, totpBackupCodes: null };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_enabled", "totp_backup_codes"]);
 }
 
 export async function updateRefreshToken(

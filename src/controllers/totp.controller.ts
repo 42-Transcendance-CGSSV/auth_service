@@ -6,24 +6,26 @@ import { IProtectedUser, toPublicUser } from "../interfaces/user.interface";
 import { generateTotpQrCode, totpCodeIsValid } from "../utils/totp.util";
 import { getUserByKey } from "../database/repositories/user.repository";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
-import { disableTotpProtection, enableTotpProtection } from "../services/auth.service";
+import { disableTotpProtection, enableTotpProtection, useTotpBackupCode } from "../services/auth.service";
 import { toSnakeCase } from "../utils/case.util";
 import { sendJwtCookie } from "../utils/cookies.util";
 import schema from "fluent-json-schema";
 
 export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
     app.post("/totp/verify", {
-        schema: { querystring: totpVerifySchema },
+        schema: { body: totpVerifySchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            if (!req.query || typeof req.query !== "object") {
-                throw new ApiError(ApiErrorCode.INVALID_QUERY, "Votre requete n'est pas valide !");
+            if (!req.publicUser) throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez etre connecte pour verifier un code TOTP !");
+
+            if (!req.body || typeof req.body !== "object") {
+                throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Votre requete n'est pas valide !");
             }
 
-            if (!("code" in req.query && "user_id" in req.query)) {
+            if (!("code" in req.body && "user_id" in req.body)) {
                 throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Veuillez inclure un code et un user_id dans votre requete !");
             }
 
-            const user: IProtectedUser = await getUserByKey("id", req.query.user_id as number);
+            const user: IProtectedUser = await getUserByKey("id", req.body.user_id as number);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur ayant cet id !");
             }
@@ -32,11 +34,16 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
                 throw new ApiError(ApiErrorCode.INSUFFICIENT_PERMISSIONS, "L'utilisateur n'a pas de secret TOTP !");
             }
 
-            const codeIsValid = totpCodeIsValid(user.totpSecret, req.query.code as string);
+            const isBackupCode =
+                user.totpBackupCodes.split(",").filter((string) => {
+                    const trim = string.trim();
+                    return trim.length > 0 && trim.length === 6 && user.totpBackupCodes.includes(trim);
+                }).length > 0;
 
-            if (!codeIsValid) {
-                throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le code TOTP est invalide !");
-            }
+            if (!isBackupCode) {
+                const codeIsValid = totpCodeIsValid(user.totpSecret, req.body.code as string);
+                if (!codeIsValid) throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le code TOTP est invalide !");
+            } else await useTotpBackupCode(user.id, req.body.code as string);
 
             user.hasPassedTotp = true;
             sendJwtCookie(generateJWT(app, toPublicUser(user), "5m"), rep);

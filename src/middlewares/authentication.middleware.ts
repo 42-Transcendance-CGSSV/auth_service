@@ -76,10 +76,10 @@ function needEmailVerification(payload: unknown): boolean {
 function needTwoFactor(payload: unknown): boolean {
     return (typeof payload === "object" &&
         payload !== null &&
-        "totpEnabled" in payload &&
-        payload.totpEnabled &&
-        "hasPassedTotp" in payload &&
-        !payload.hasPassedTotp) as boolean;
+        "totp_enabled" in payload &&
+        payload.totp_enabled &&
+        "has_passed_totp" in payload &&
+        !payload.has_passed_totp) as boolean;
 }
 
 function isUserToken(payload: any): payload is IPublicUser {

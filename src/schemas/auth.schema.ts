@@ -14,5 +14,5 @@ export const loginSchema = schema
 export const totpVerifySchema = schema
     .object()
     .prop("code", schema.string().format("regex").pattern(/^\d+$/).minLength(6).maxLength(6).required())
-    .prop("user_id", schema.number().minimum(1))
+    .prop("user_id", schema.number().minimum(1).required())
     .required();
