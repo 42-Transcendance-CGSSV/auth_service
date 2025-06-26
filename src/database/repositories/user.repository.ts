@@ -2,6 +2,7 @@ import { dbPool } from "../database";
 import { ApiError, ApiErrorCode } from "../../utils/errors.util";
 import { toCamelCase } from "../../utils/case.util";
 import { IProtectedUser } from "../../interfaces/user.interface";
+import { generateTotpSecretKey } from "../../utils/totp.util";
 
 export async function createUsersTable(): Promise<void> {
     //@formatter:off
@@ -11,10 +12,11 @@ export async function createUsersTable(): Promise<void> {
             name VARCHAR(16) NOT NULL UNIQUE,
             email VARCHAR(320) NOT NULL UNIQUE,
             password VARCHAR(32),
-            external_token TEXT,
             created_at INTEGER NOT NULL,
             verified boolean NOT NULL,
-            totp_secret TEXT DEFAULT NULL
+            totp_secret TEXT NOT NULL,
+            totp_enabled BOOLEAN DEFAULT FALSE,
+            totp_backup_codes TEXT DEFAULT NULL
         )`;
 
     const db = await dbPool.acquire();
@@ -25,29 +27,25 @@ export async function createUsersTable(): Promise<void> {
 }
 
 export async function insertUser(user: IProtectedUser): Promise<number> {
-    const query = `INSERT INTO users (id, name, email, password, external_token, created_at, verified, totp_secret)
-                   VALUES (?, ?, ?, ?, ?, ?, ?,?)`;
+    const query = `INSERT INTO users (id, name, email, password, created_at, verified, totp_secret)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
     const db = await dbPool.acquire();
 
     return new Promise<number>((resolve, reject) => {
-        db.run(
-            query,
-            [null, user.name, user.email, user.password, user.externalToken, user.createdAt, user.verified, null],
-            function (err) {
-                dbPool.release(db);
-                if (err) {
-                    reject(
-                        new ApiError(
-                            ApiErrorCode.RESOURCE_ALREADY_EXISTS,
-                            "Un utilisateur ayant le meme pseudo / email est deja present dans la base de donnes !"
-                        )
-                    );
-                    return;
-                }
-                resolve(this.lastID);
+        db.run(query, [null, user.name, user.email, user.password, user.createdAt, user.verified, generateTotpSecretKey()], function (err) {
+            dbPool.release(db);
+            if (err) {
+                reject(
+                    new ApiError(
+                        ApiErrorCode.RESOURCE_ALREADY_EXISTS,
+                        "Un utilisateur ayant le meme pseudo / email est deja present dans la base de donnes !"
+                    )
+                );
+                return;
             }
-        );
+            resolve(this.lastID);
+        });
     });
 }
 
@@ -111,16 +109,24 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
     const filteredValues = values.filter((value) => value !== null && value !== undefined);
     filteredValues.push(userId);
 
-    const finalValues = [];
+    const finalValues: ((Partial<T>[keyof T] & {}) | null)[] = [];
     for (let i = 0; i < filteredValues.length; i++) {
         if (filteredValues[i] === "null") finalValues.push(null);
         else finalValues.push(filteredValues[i]);
     }
-
     const db = await dbPool.acquire();
-    db.run(query, finalValues, (err: Error | null) => {
-        dbPool.release(db);
-        if (err) throw err;
+    return new Promise<void>((resolve, reject) => {
+        db.run(query, finalValues, (err: Error | null) => {
+            dbPool.release(db);
+            if (err)
+                reject(
+                    new ApiError(
+                        ApiErrorCode.USER_NOT_FOUND,
+                        `Impossible de mettre a jour l'utilisateur avec l'ID ${userId} dans la base de donnees !`
+                    )
+                );
+            else resolve();
+        });
     });
 }
 
@@ -128,9 +134,12 @@ export async function activateUser(userId: number): Promise<void> {
     const query: string = `UPDATE users SET verified = 1 WHERE id = ?`;
     const db = await dbPool.acquire();
 
-    db.run(query, [userId], (err: Error | null) => {
-        dbPool.release(db);
-        if (err) throw err;
+    return new Promise<void>((resolve, reject) => {
+        db.run(query, [userId], (err: Error | null) => {
+            dbPool.release(db);
+            if (err) reject(new ApiError(ApiErrorCode.USER_NOT_FOUND, `Impossible d'activer l'utilisateur avec l'ID ${userId} !`));
+            else resolve();
+        });
     });
 }
 
@@ -140,7 +149,7 @@ export async function deleteUser(userId: number): Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
         db.run(query, [userId], function (err) {
             dbPool.release(db);
-            if (err) reject(err);
+            if (err) reject(new ApiError(ApiErrorCode.USER_NOT_FOUND, `Impossible de supprimer l'utilisateur avec l'ID ${userId} !`));
             else resolve(true);
         });
     });

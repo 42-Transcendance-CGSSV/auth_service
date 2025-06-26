@@ -5,15 +5,14 @@ export interface IPublicUser {
     createdAt: number;
     verified: boolean;
 
-    isExternal: boolean;
-    hasTotpProtection: boolean;
+    totpEnabled: boolean;
     hasPassedTotp: boolean;
 }
 
 export interface IProtectedUser extends IPublicUser {
-    externalToken: string | null;
     password: string | null;
-    totpSecret: string | null;
+    totpSecret: string;
+    totpBackupCodes: string;
 }
 
 export function toPublicUser(objet: IProtectedUser): IPublicUser {
@@ -23,8 +22,7 @@ export function toPublicUser(objet: IProtectedUser): IPublicUser {
         verified: objet.verified,
         email: objet.email,
         createdAt: objet.createdAt,
-        hasTotpProtection: objet.totpSecret != null,
-        hasPassedTotp: objet.totpSecret != null && objet.hasPassedTotp ? true : false,
-        isExternal: !("password" in objet)
+        totpEnabled: objet.totpEnabled && typeof objet.totpBackupCodes !== "undefined" && objet.totpBackupCodes.length > 0,
+        hasPassedTotp: objet.totpSecret && objet.totpEnabled ? objet.hasPassedTotp : false
     };
 }

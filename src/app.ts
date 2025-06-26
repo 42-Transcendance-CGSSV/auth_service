@@ -1,6 +1,5 @@
 import fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
-import fastifyCookie from "fastify-cookie";
 import fastifyMultipart from "@fastify/multipart";
 import { env } from "./utils/environment";
 import { createDatabase, dbPool, vacuumOldTokens } from "./database/database";
@@ -13,6 +12,8 @@ import AuthenticationMiddleware from "./middlewares/authentication.middleware";
 import { registerAccountRoutes } from "./controllers/accounts.controller";
 import { clearInterval } from "timers";
 import { registerPicturesRoutes } from "./controllers/pictures.controller";
+import { registerTotpRoutes } from "./controllers/totp.controller";
+import fastifyCookie from "@fastify/cookie";
 
 const app = fastify({
     logger: {
@@ -103,6 +104,7 @@ const startTime: number = getTimestamp();
 createDatabase(app)
     .then(async () => {
         await registerAuthRoutes(app);
+        await registerTotpRoutes(app);
         await registerTokensRoutes(app);
         await registerAccountRoutes(app);
         await registerPicturesRoutes(app);

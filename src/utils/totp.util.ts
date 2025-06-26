@@ -1,6 +1,7 @@
 import { TOTP } from "totp-generator";
 import { addSeconds, getTimestamp } from "./timestamp.util";
 import QRCode from "qrcode";
+import { ApiError, ApiErrorCode } from "./errors.util";
 
 function getTotpIssuer(): string {
     return "FTTRANSANDENCEJGCSS";
@@ -58,10 +59,14 @@ export function totpCodeIsValid(totpSecret: string, code: string): boolean {
     return false;
 }
 
-export async function generateTotpQrCode(totpSecret: string, accountName: string): Promise<string | null> {
+export async function generateTotpQrCode(totpSecret: string, accountName: string): Promise<string> {
     try {
-        return await QRCode.toDataURL(getTotpURI(totpSecret, accountName));
+        return await QRCode.toDataURL(getTotpURI(totpSecret, accountName), {
+            errorCorrectionLevel: "high",
+            type: "image/png",
+            color: { dark: "#4318D1" }
+        });
     } catch {
-        return null;
+        throw new ApiError(ApiErrorCode.INTERNAL_SERVER_ERROR, "Impossible de generer le QR code TOTP !");
     }
 }

@@ -9,11 +9,16 @@ import { updatePicturePath } from "../database/repositories/pictures.repository"
 import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
 import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
-import {env} from "../utils/environment";
+import { env } from "../utils/environment";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
-    const promiseMail = sendEmailFromUser(3, { TOKEN: token, IP: env.IP, NGINX_PORT: env.NGINX_PORT }, userId, "Verification de votre compte ft_transcendence !");
+    const promiseMail = sendEmailFromUser(
+        3,
+        { TOKEN: token, IP: env.IP, NGINX_PORT: env.NGINX_PORT },
+        userId,
+        "Verification de votre compte ft_transcendence !"
+    );
     return promiseMail
         .then(() => {
             return true;

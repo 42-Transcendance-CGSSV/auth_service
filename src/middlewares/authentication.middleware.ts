@@ -23,11 +23,7 @@ declare module "fastify" {
 class AuthenticationMiddleware extends AMiddleware {
     public constructor() {
         super();
-        this.addRoute("/token/validate")
-            .addRoute("/picture/upload")
-            .addRoute("/picture")
-            .addRoute("/totp/toggle")
-            .addRoute("/totp/validate");
+        this.addRoute("/token/validate").addRoute("/picture/upload").addRoute("/picture").addRoute("/totp").addRoute("/totp/verify");
     }
 
     /**
@@ -50,7 +46,7 @@ class AuthenticationMiddleware extends AMiddleware {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez dabord verifier votre compte");
 
             //todo: check if mail if verified
-            if (needTwoFactor(payload) && request.url !== "/totp/validate") {
+            if (needTwoFactor(payload) && request.url !== "/totp/verify") {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
             }
 
@@ -80,8 +76,8 @@ function needEmailVerification(payload: unknown): boolean {
 function needTwoFactor(payload: unknown): boolean {
     return (typeof payload === "object" &&
         payload !== null &&
-        "hasTotpProtection" in payload &&
-        payload.hasTotpProtection &&
+        "totpEnabled" in payload &&
+        payload.totpEnabled &&
         "hasPassedTotp" in payload &&
         !payload.hasPassedTotp) as boolean;
 }

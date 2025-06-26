@@ -6,7 +6,7 @@ import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getUserByKey } from "../database/repositories/user.repository";
 
 export async function createRefreshToken(userId: number): Promise<RefreshToken> {
-    const token: RefreshToken = RefreshToken.generateToken(userId, addDays(getTimestamp(), 30));
+    const token: RefreshToken = RefreshToken.generateToken(userId, addDays(getTimestamp(), 60));
     await tokenRepository.insertToken(token);
     return token;
 }

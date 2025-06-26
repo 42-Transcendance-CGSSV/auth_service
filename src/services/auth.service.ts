@@ -1,25 +1,33 @@
-import { FastifyInstance, FastifyRequest } from "fastify";
+import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import HashUtil from "../utils/hash.util";
 import { verifyJWT } from "../utils/jwt.util";
 import { getUserByKey, insertUser, updatePartialUser } from "../database/repositories/user.repository";
 import { toCamelCase, toSnakeCase } from "../utils/case.util";
 import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
-import { createExternalUser, createLocalUser } from "../factory/user.factory";
-import { generateTotpSecretKey } from "../utils/totp.util";
+import { createLocalUser } from "../factory/user.factory";
+import { totpCodeIsValid } from "../utils/totp.util";
+import { createRefreshToken, updateToken } from "./tokens.service";
+import { flushRefreshTokenCookie } from "../utils/cookies.util";
+import RefreshToken from "../classes/RefreshToken";
+import { randomInt } from "node:crypto";
 
 export async function registerUser(req: FastifyRequest): Promise<IProtectedUser> {
     if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
 
     const camelCaseRow = toCamelCase(req.body);
-    if (camelCaseRow.name && camelCaseRow.email && camelCaseRow.password) {
-        const user: IProtectedUser = await createLocalUser(camelCaseRow.name, camelCaseRow.email, camelCaseRow.password);
-        await registerLocalUser(user);
-        return user;
+    if (!camelCaseRow.name || !camelCaseRow.email || !camelCaseRow.password) {
+        throw new ApiError(
+            ApiErrorCode.INVALID_REQUEST_BODY,
+            "Vous devez fournir un nom, un email et un mot de passe pour enregistrer un utilisateur !"
+        );
     }
-    const externalUser = createExternalUser(camelCaseRow.name, camelCaseRow.email, "EXEMPLE TOKEN");
-    await registerExternalUser(externalUser);
-    return externalUser;
+
+    const user: IProtectedUser = await createLocalUser(camelCaseRow.name, camelCaseRow.email, camelCaseRow.password);
+    if (!user.password)
+        throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Un mot de passe est requis pour enregistrer un utilisateur !");
+    user.id = await insertUser(user);
+    return user;
 }
 
 export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IPublicUser> {
@@ -48,7 +56,7 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
         const user: IProtectedUser = await getUserByKey("email", email.toLowerCase());
 
         if (user.password === null || typeof user.password === "undefined") {
-            throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver un utilisateur ayant ces identifiants !");
+            throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "%backend.auth.login.error.kd%");
         }
 
         if (!(await HashUtil.comparePasswords(password, user.password))) {
@@ -68,33 +76,78 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
     }
 }
 
-export async function toggleTotp(userId: number): Promise<string | null> {
+function generateTotpBackupCode(): string {
+    return randomInt(0, 1000000).toString().padStart(6, "0");
+}
+
+function generateTotpBackupCodes(): string[] {
+    const backupCodes: string[] = [];
+    for (let i = 0; i < 6; i++) {
+        backupCodes.push(generateTotpBackupCode());
+    }
+    return backupCodes;
+}
+
+export async function enableTotpProtection(userId: number, totpCode: number): Promise<string> {
     const user = await getUserByKey("id", userId);
-    if (!user) return null;
-    if (user.totpSecret === null) {
-        const key: string = generateTotpSecretKey();
-        const valuesToUpdate: Partial<any> = { totpSecret: key };
-        await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_secret"]);
-        return key;
-    }
+    if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur avec cet ID !");
 
-    const valuesToUpdate: Partial<any> = { totpSecret: "null" };
-    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_secret"]);
-    return null;
+    if (!totpCodeIsValid(user.totpSecret, totpCode.toString()))
+        throw new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, "Impossible de valider le code TOTP !");
+
+    const backupCodes: string = generateTotpBackupCodes().join(",");
+
+    const valuesToUpdate: Partial<any> = { totpEnabled: true, totpBackupCodes: backupCodes };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_enabled", "totp_backup_codes"]);
+    return backupCodes;
 }
 
-async function registerLocalUser(localUser: IProtectedUser): Promise<IPublicUser> {
-    if (!localUser.password) {
-        throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Un mot de passe est requis pour enregistrer un utilisateur local !");
+export async function useTotpBackupCode(userId: number, backupCode: string): Promise<void> {
+    const user = await getUserByKey("id", userId);
+    if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur avec cet ID !");
+
+    if (!user.totpBackupCodes || !user.totpBackupCodes.split(",").includes(backupCode)) {
+        throw new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, "Le code de secours TOTP est invalide ou a deja et utilise !");
     }
-    localUser.id = await insertUser(localUser);
-    return localUser as IPublicUser;
+
+    const updatedBackupCodes = user.totpBackupCodes
+        .split(",")
+        .filter((code: string) => code !== backupCode)
+        .join(",");
+
+    const valuesToUpdate: Partial<any> = { totpBackup: updatedBackupCodes };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_backup"]);
 }
 
-async function registerExternalUser(externalUser: IProtectedUser): Promise<IPublicUser> {
-    if (!externalUser.externalToken) {
-        throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Un token externe est requis pour enregistrer un utilisateur externe !");
+export async function disableTotpProtection(userId: number): Promise<void> {
+    const user = await getUserByKey("id", userId);
+    if (!user) throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur avec cet ID !");
+
+    const valuesToUpdate: Partial<any> = { totpEnabled: false };
+    await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_enabled"]);
+}
+
+export async function updateRefreshToken(
+    cookies: {
+        [p: string]: string | undefined;
+    },
+    user: IPublicUser,
+    rep: FastifyReply
+): Promise<RefreshToken> {
+    let hasRefreshToken: boolean = true;
+    if (!cookies || !cookies["refresh_token"]) hasRefreshToken = false;
+
+    if (hasRefreshToken) {
+        const refreshToken: string | undefined = cookies["refresh_token"];
+        if (!refreshToken) hasRefreshToken = false;
     }
-    await insertUser(externalUser);
-    return externalUser as IPublicUser;
+
+    if (hasRefreshToken) {
+        try {
+            return await updateToken(cookies["refresh_token"]!);
+        } catch {
+            flushRefreshTokenCookie(rep);
+            return await createRefreshToken(user.id);
+        }
+    } else return await createRefreshToken(user.id);
 }
