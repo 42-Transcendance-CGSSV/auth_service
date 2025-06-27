@@ -21,11 +21,11 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
                 throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Votre requete n'est pas valide !");
             }
 
-            if (!("code" in req.body && "user_id" in req.body)) {
-                throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Veuillez inclure un code et un user_id dans votre requete !");
+            if (!("code" in req.body)) {
+                throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Veuillez inclure un code dans votre requete !");
             }
 
-            const user: IProtectedUser = await getUserByKey("id", req.body.user_id as number);
+            const user: IProtectedUser = await getUserByKey("id", req.publicUser.id);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur ayant cet id !");
             }

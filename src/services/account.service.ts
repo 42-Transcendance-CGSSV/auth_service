@@ -10,6 +10,7 @@ import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
 import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
 import { env } from "../utils/environment";
+import { app } from "../app";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
@@ -42,7 +43,7 @@ export async function createVerificationToken(userId: number): Promise<string> {
     return Promise.resolve(token);
 }
 
-export async function activateAccount(req: FastifyRequest): Promise<number | null> {
+export async function activateAccount(req: FastifyRequest): Promise<number> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un token dans la requete !");
     }
@@ -51,19 +52,25 @@ export async function activateAccount(req: FastifyRequest): Promise<number | nul
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Le token est necessaire pour l'activation du compte");
     }
 
-    const result: boolean = await verificationTokenIsValid(token);
+    try {
+        const tokenIsValid = await verificationTokenIsValid(token);
+        app.log.warn("Verification Token is valid: " + tokenIsValid);
 
-    if (result) {
-        try {
-            const userId = Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number;
-            await activateUser(userId);
-            await deleteVerificationToken(token);
-            return userId;
-        } catch {
+        if (!tokenIsValid) {
             throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
         }
+
+        const userId = Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number;
+        await activateUser(userId);
+        await deleteVerificationToken(token);
+        return userId;
+    } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        app.log.error("Erreur lors de l'activation du compte:", error);
+        throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Erreur lors de l'activation du compte");
     }
-    throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
 }
 
 async function verificationTokenIsValid(token: string): Promise<boolean> {
@@ -76,7 +83,8 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     const end: string = simplyToken.charAt(simplyToken.length - 1);
     if (start !== end) return Promise.resolve(false);
     try {
-        const userId = Number.parseInt(start, 10);
+        const userId = Number.parseInt(start);
+        app.log.warn("Verification Token is valid user Id: " + userId);
         if (isNaN(userId)) return Promise.resolve(false);
         const dbToken: string = await getVerificationToken(userId);
         return Promise.resolve(dbToken === token);

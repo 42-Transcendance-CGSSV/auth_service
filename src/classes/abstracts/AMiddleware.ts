@@ -29,11 +29,14 @@ abstract class AMiddleware {
      * @param app Fastify instance
      */
     public register(app: FastifyInstance): void {
-        this.routes.forEach((route: string) => {
-            app.addHook("preHandler", async (request: FastifyRequest, response: FastifyReply) => {
-                if (request.url === route) return await this.handleRequest(app, request, response);
+        app.addHook("preHandler", async (request: FastifyRequest, response: FastifyReply) => {
+            app.log.info("PreHandler hook for route: " + request.url);
+            const isProtected = this.routes.some((route) => request.url.startsWith(route));
+            if (!isProtected) {
                 return;
-            });
+            }
+            app.log.info("Handling request for protected route: " + request.url);
+            return await this.handleRequest(app, request, response);
         });
     }
 

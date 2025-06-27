@@ -33,7 +33,6 @@ class AuthenticationMiddleware extends AMiddleware {
      * @param response Fastify response
      */
     public async handleRequest(app: FastifyInstance, request: FastifyRequest, response: FastifyReply): Promise<boolean> {
-        app.log.info("middleintercepter: " + request.url);
         try {
             request.publicUser = undefined;
             const payload = await verifyJWT(app, request);
@@ -42,14 +41,12 @@ class AuthenticationMiddleware extends AMiddleware {
                 throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le JWT n'est pas valide !");
             }
 
-            if (needEmailVerification(payload) && request.url !== "/activate-account")
+            if (needEmailVerification(payload) && !request.url.includes("/activate-account?token="))
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez dabord verifier votre compte");
 
-            //todo: check if mail if verified
             if (needTwoFactor(payload) && request.url !== "/totp/verify") {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
             }
-
             request.publicUser = payload;
             return true;
         } catch (error) {

@@ -27,8 +27,7 @@ export async function createUsersTable(): Promise<void> {
 }
 
 export async function insertUser(user: IProtectedUser): Promise<number> {
-    const query = `INSERT INTO users (id, name, email, password, created_at, verified, totp_secret)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    const query = `INSERT INTO users (id, name, email, password, created_at, verified, totp_secret) VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
     const db = await dbPool.acquire();
 
@@ -131,15 +130,18 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
 }
 
 export async function activateUser(userId: number): Promise<void> {
-    const query: string = `UPDATE users SET verified = 1 WHERE id = ?`;
-    const db = await dbPool.acquire();
-
     return new Promise<void>((resolve, reject) => {
-        db.run(query, [userId], (err: Error | null) => {
-            dbPool.release(db);
-            if (err) reject(new ApiError(ApiErrorCode.USER_NOT_FOUND, `Impossible d'activer l'utilisateur avec l'ID ${userId} !`));
-            else resolve();
-        });
+        const query: string = `UPDATE users SET verified = 1 WHERE id = ?`;
+        dbPool
+            .acquire()
+            .then((db) => {
+                db.run(query, [userId], (err: Error | null) => {
+                    dbPool.release(db);
+                    if (err) reject(new ApiError(ApiErrorCode.USER_NOT_FOUND, `Impossible d'activer l'utilisateur avec l'ID ${userId} !`));
+                    resolve();
+                });
+            })
+            .catch(reject);
     });
 }
 

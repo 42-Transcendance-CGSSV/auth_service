@@ -15,7 +15,7 @@ import { registerPicturesRoutes } from "./controllers/pictures.controller";
 import { registerTotpRoutes } from "./controllers/totp.controller";
 import fastifyCookie from "@fastify/cookie";
 
-const app = fastify({
+export const app = fastify({
     logger: {
         transport: {
             target: "pino-pretty",

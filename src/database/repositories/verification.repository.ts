@@ -37,7 +37,7 @@ export async function insertVerificationToken(userId: number, token: string): Pr
 
     const db = await dbPool.acquire();
     return new Promise<void>((resolve, reject) => {
-        db.run(query, [userId, token], function(err) {
+        db.run(query, [userId, token], function (err) {
             dbPool.release(db);
             if (err) {
                 reject(err);
@@ -65,6 +65,7 @@ export async function getVerificationToken(userId: number): Promise<string> {
                 reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
                 return;
             }
+
             const typedRow = row as unknown as { verification_token: string };
             if (!typedRow || !("verification_token" in typedRow)) {
                 reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
@@ -97,5 +98,5 @@ export async function deleteVerificationToken(token: string): Promise<void> {
 
     const db = await dbPool.acquire();
     db.run(query, [token]);
-    dbPool.release(db);
+    await dbPool.release(db);
 }
