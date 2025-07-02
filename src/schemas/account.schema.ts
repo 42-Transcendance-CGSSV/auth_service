@@ -4,7 +4,7 @@ export const getAccountSchema = schema
     .object()
     .anyOf([
         schema.object().prop("name", schema.string().minLength(4).maxLength(16).pattern("[a-zA-Z0-9_]")).required(),
-        schema.object().prop("user_id", schema.number().minimum(1)).required()
+        schema.object().prop("userId", schema.number().minimum(1)).required()
     ]);
 
 //TODO: regex external token

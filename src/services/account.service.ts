@@ -8,7 +8,7 @@ import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
-import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
 import { env } from "../utils/environment";
 import { app } from "../app";
 
@@ -93,7 +93,7 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
+export async function getUserPayload(req: FastifyRequest): Promise<IPublicUser> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
@@ -111,14 +111,12 @@ export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
 
-    if (type === "NAME") {
-        const user = await getUserByKey("name", value);
-        return toPublicUser(user);
-    }
-    if (type === "ID") {
-        const user = await getUserByKey("id", value);
-        return toPublicUser(user);
-    }
+    let user: IProtectedUser | null = null;
+
+    if (type === "NAME") user = await getUserByKey("name", value);
+    if (type === "ID") user = await getUserByKey("id", value);
+    if (user) return toPublicUser(user);
+
     throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }
 

@@ -4,13 +4,14 @@ import HashUtil from "../utils/hash.util";
 import { verifyJWT } from "../utils/jwt.util";
 import { getUserByKey, insertUser, updatePartialUser } from "../database/repositories/user.repository";
 import { toCamelCase, toSnakeCase } from "../utils/case.util";
-import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { IProtectedUser, IPublicUser } from "../interfaces/user.interface";
 import { createLocalUser } from "../factory/user.factory";
 import { totpCodeIsValid } from "../utils/totp.util";
 import { createRefreshToken, updateToken } from "./tokens.service";
 import { flushRefreshTokenCookie } from "../utils/cookies.util";
 import RefreshToken from "../classes/RefreshToken";
 import { randomInt } from "node:crypto";
+import { app } from "../app";
 
 export async function registerUser(req: FastifyRequest): Promise<IProtectedUser> {
     if (!req.body) throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Veuillez inclure un body a votre requete !");
@@ -30,7 +31,7 @@ export async function registerUser(req: FastifyRequest): Promise<IProtectedUser>
     return user;
 }
 
-export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IPublicUser> {
+export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance): Promise<IProtectedUser> {
     let alreadyHasJwt: boolean = false;
 
     //TODO: check if the user is already logged in
@@ -67,7 +68,7 @@ export async function loginLocalUser(req: FastifyRequest, app: FastifyInstance):
             throw new ApiError(ApiErrorCode.INSUFFICIENT_PERMISSIONS, "Impossible de se connecter a un compte non verifie !");
         }
 
-        return toPublicUser(user);
+        return user;
     } catch (error) {
         if (error instanceof ApiError) {
             throw error;
@@ -99,6 +100,8 @@ export async function enableTotpProtection(userId: number, totpCode: number): Pr
 
     const valuesToUpdate: Partial<any> = { totpEnabled: true, totpBackupCodes: backupCodes };
     await updatePartialUser(userId, toSnakeCase(valuesToUpdate), ["totp_enabled", "totp_backup_codes"]);
+    app.log.info(`TOTP protection enabled for user ID: ${userId}`);
+    app.log.debug(await getUserByKey("id", userId));
     return backupCodes;
 }
 

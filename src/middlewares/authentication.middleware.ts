@@ -5,6 +5,7 @@ import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { IErrorResponse } from "../interfaces/response.interface";
 import { TokenError } from "fast-jwt";
 import { IPublicUser } from "../interfaces/user.interface";
+import { toCamelCase } from "../utils/case.util";
 
 /**
  * @description Middleware to verify the JWT token and add the user to the request
@@ -47,7 +48,10 @@ class AuthenticationMiddleware extends AMiddleware {
             if (needTwoFactor(payload) && request.url !== "/totp/verify") {
                 throw new ApiError(ApiErrorCode.UNAUTHORIZED, "Vous devez passer le processus d'authentification à deux facteurs !");
             }
-            request.publicUser = payload;
+
+            request.publicUser = toCamelCase(payload) as IPublicUser;
+            app.log.warn("Public user authenticated: " + request.publicUser.id);
+            app.log.warn(payload);
             return true;
         } catch (error) {
             if (error instanceof TokenError) {

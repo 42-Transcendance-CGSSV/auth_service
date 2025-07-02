@@ -6,7 +6,7 @@ import { ISuccessResponse } from "../interfaces/response.interface";
 import { sendVerificationToken } from "../services/account.service";
 import { revokeToken } from "../services/tokens.service";
 import { loginSchema, registerSchema } from "../schemas/auth.schema";
-import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { IProtectedUser, toPublicUser } from "../interfaces/user.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { toSnakeCase } from "../utils/case.util";
 
@@ -34,7 +34,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     app.post("/login", {
         schema: { body: loginSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply) => {
-            const publicUser: IPublicUser = await loginLocalUser(req, app);
+            const publicUser = await loginLocalUser(req, app);
             const jwt: string = generateJWT(app, publicUser, "5m");
 
             const refreshTokenObj = await updateRefreshToken(req.cookies, publicUser, rep);

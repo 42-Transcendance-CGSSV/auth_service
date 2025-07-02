@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { activateAccount, getJwtPayload } from "../services/account.service";
+import { activateAccount, getUserPayload } from "../services/account.service";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getUserByKey, updatePartialUser } from "../database/repositories/user.repository";
@@ -57,7 +57,7 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
     app.get("/get-account/:user", {
         schema: { querystring: getAccountSchema },
         handler: async (req: FastifyRequest, rep: FastifyReply): Promise<never | void> => {
-            const user: IPublicUser = await getJwtPayload(req);
+            const user: IPublicUser = await getUserPayload(req);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur");
             }

@@ -21,4 +21,7 @@ COPY --from=builder /app/package-lock.json /app
 
 RUN npm ci --omit=dev
 
+RUN mkdir -p /app/data/static/profiles_pictures
+COPY ./data/static/profiles_pictures /app/data/static/profiles_pictures
+
 ENTRYPOINT ["node" ,"compiled/app.js"]

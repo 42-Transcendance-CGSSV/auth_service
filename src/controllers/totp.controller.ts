@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { generateJWT } from "../utils/jwt.util";
 import { ISuccessResponse } from "../interfaces/response.interface";
 import { totpVerifySchema } from "../schemas/auth.schema";
-import { IProtectedUser, toPublicUser } from "../interfaces/user.interface";
+import { IProtectedUser } from "../interfaces/user.interface";
 import { generateTotpQrCode, totpCodeIsValid } from "../utils/totp.util";
 import { getUserByKey } from "../database/repositories/user.repository";
 import { ApiError, ApiErrorCode } from "../utils/errors.util";
@@ -25,6 +25,14 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
                 throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Veuillez inclure un code dans votre requete !");
             }
 
+            if (typeof req.body.code !== "string" || req.body.code.length !== 6) {
+                throw new ApiError(
+                    ApiErrorCode.INVALID_REQUEST_BODY,
+                    "Le code doit etre une chaine de caracteres d'au moins 6 caracteres !"
+                );
+            }
+
+            const code: string = req.body.code;
             const user: IProtectedUser = await getUserByKey("id", req.publicUser.id);
             if (!user) {
                 throw new ApiError(ApiErrorCode.USER_NOT_FOUND, "Impossible de trouver l'utilisateur ayant cet id !");
@@ -34,11 +42,10 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
                 throw new ApiError(ApiErrorCode.INSUFFICIENT_PERMISSIONS, "L'utilisateur n'a pas de secret TOTP !");
             }
 
-            const isBackupCode =
-                user.totpBackupCodes.split(",").filter((string) => {
-                    const trim = string.trim();
-                    return trim.length > 0 && trim.length === 6 && user.totpBackupCodes.includes(trim);
-                }).length > 0;
+            const isBackupCode = user.totpBackupCodes.split(",").some((str) => {
+                const trimmed = str.trim();
+                return trimmed.length === 6 && trimmed === code;
+            });
 
             if (!isBackupCode) {
                 const codeIsValid = totpCodeIsValid(user.totpSecret, req.body.code as string);
@@ -46,7 +53,7 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
             } else await useTotpBackupCode(user.id, req.body.code as string);
 
             user.hasPassedTotp = true;
-            sendJwtCookie(generateJWT(app, toPublicUser(user), "5m"), rep);
+            sendJwtCookie(generateJWT(app, user, "5m"), rep);
             rep.send({
                 success: true,
                 message: "Le code TOTP est valide !"
@@ -95,6 +102,7 @@ export async function registerTotpRoutes(app: FastifyInstance): Promise<void> {
             const user = await getUserByKey("id", req.publicUser.id);
             user.hasPassedTotp = true;
             user.totpEnabled = true;
+            user.totpBackupCodes = codes;
             sendJwtCookie(generateJWT(app, user, "5m"), rep);
             rep.send({
                 success: true,
