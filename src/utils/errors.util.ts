@@ -27,6 +27,8 @@ export enum ApiErrorCode {
     INVALID_FILE_SIZE = "INVALID_FILE_SIZE",
     INVALID_QUERY = "INVALID_QUERY",
 
+    UNPROCESSABLE_ENTITY = "UNPROCESSABLE_ENTITY",
+
     // Erreurs serveur (500)
     INTERNAL_SERVER_ERROR = "INTERNAL_SERVER_ERROR",
     DATABASE_ERROR = "DATABASE_ERROR"
@@ -66,6 +68,8 @@ export const getHttpStatusCode = (errorCode: ApiErrorCode): number => {
         case ApiErrorCode.DUPLICATE_RESOURCE:
         case ApiErrorCode.RESOURCE_ALREADY_EXISTS:
             return 409;
+        case ApiErrorCode.UNPROCESSABLE_ENTITY:
+            return 422;
 
         // 500 - Internal Server Error
         case ApiErrorCode.INTERNAL_SERVER_ERROR:
