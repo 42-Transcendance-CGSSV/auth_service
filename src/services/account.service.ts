@@ -8,11 +8,18 @@ import fs from "fs";
 import { updatePicturePath } from "../database/repositories/pictures.repository";
 import { isImage } from "../utils/file.util";
 import { sendEmailFromUser } from "../utils/mail.util";
-import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import { env } from "../utils/environment";
+import { app } from "../app";
 
 export async function sendVerificationToken(userId: number, app: FastifyInstance): Promise<boolean> {
     const token = await createVerificationToken(userId);
-    const promiseMail = sendEmailFromUser(3, { TOKEN: token }, userId, "Verification de votre compte ft_transcendence !");
+    const promiseMail = sendEmailFromUser(
+        3,
+        { TOKEN: token, IP: env.IP, NGINX_PORT: env.NGINX_PORT },
+        userId,
+        "Verification de votre compte ft_transcendence !"
+    );
     return promiseMail
         .then(() => {
             return true;
@@ -36,7 +43,7 @@ export async function createVerificationToken(userId: number): Promise<string> {
     return Promise.resolve(token);
 }
 
-export async function activateAccount(req: FastifyRequest): Promise<void> {
+export async function activateAccount(req: FastifyRequest): Promise<number> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un token dans la requete !");
     }
@@ -45,18 +52,25 @@ export async function activateAccount(req: FastifyRequest): Promise<void> {
         throw new ApiError(ApiErrorCode.INVALID_REQUEST_BODY, "Le token est necessaire pour l'activation du compte");
     }
 
-    const result: boolean = await verificationTokenIsValid(token);
+    try {
+        const tokenIsValid = await verificationTokenIsValid(token);
+        app.log.warn("Verification Token is valid: " + tokenIsValid);
 
-    if (result) {
-        try {
-            await activateUser(Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number);
-            await deleteVerificationToken(token);
-        } catch {
+        if (!tokenIsValid) {
             throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
         }
-        return;
+
+        const userId = Buffer.from(token, "base64").toString("ascii").charAt(0) as unknown as number;
+        await activateUser(userId);
+        await deleteVerificationToken(token);
+        return userId;
+    } catch (error) {
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        app.log.error("Erreur lors de l'activation du compte:", error);
+        throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Erreur lors de l'activation du compte");
     }
-    throw new ApiError(ApiErrorCode.INVALID_TOKEN, "Le token de verification est invalide !");
 }
 
 async function verificationTokenIsValid(token: string): Promise<boolean> {
@@ -69,7 +83,8 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     const end: string = simplyToken.charAt(simplyToken.length - 1);
     if (start !== end) return Promise.resolve(false);
     try {
-        const userId = Number.parseInt(start, 10);
+        const userId = Number.parseInt(start);
+        app.log.warn("Verification Token is valid user Id: " + userId);
         if (isNaN(userId)) return Promise.resolve(false);
         const dbToken: string = await getVerificationToken(userId);
         return Promise.resolve(dbToken === token);
@@ -78,7 +93,7 @@ async function verificationTokenIsValid(token: string): Promise<boolean> {
     }
 }
 
-export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
+export async function getUserPayload(req: FastifyRequest): Promise<IPublicUser> {
     if (!req.query || typeof req.query !== "object") {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
@@ -96,14 +111,12 @@ export async function getJwtPayload(req: FastifyRequest): Promise<IPublicUser> {
         throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
     }
 
-    if (type === "NAME") {
-        const user = await getUserByKey("name", value);
-        return toPublicUser(user);
-    }
-    if (type === "ID") {
-        const user = await getUserByKey("id", value);
-        return toPublicUser(user);
-    }
+    let user: IProtectedUser | null = null;
+
+    if (type === "NAME") user = await getUserByKey("name", value);
+    if (type === "ID") user = await getUserByKey("id", value);
+    if (user) return toPublicUser(user);
+
     throw new ApiError(ApiErrorCode.INVALID_QUERY, "Veuillez inclure un utilisateur dans la requete !");
 }
 
@@ -112,7 +125,7 @@ export async function changeAccountPicture(multipart: MultipartFile | undefined,
         throw new ApiError(ApiErrorCode.MISSING_REQUIRED_FIELD, "Aucun fichier n'a été envoyé");
     }
     const path: string = "./data/static/profiles_pictures/uploads/" + generateUUID() + "." + multipart.filename.split(".")[1];
-    const buffer: Buffer<ArrayBuffer> = await multipart.toBuffer();
+    const buffer: Buffer = await multipart.toBuffer();
 
     if (multipart.file.truncated) {
         throw new ApiError(ApiErrorCode.INVALID_FILE_SIZE, "Ce fichier est trop lourd !");

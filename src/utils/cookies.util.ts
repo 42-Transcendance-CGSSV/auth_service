@@ -2,71 +2,47 @@ import { env } from "./environment";
 import { addDays, addMinutes, getTimestamp } from "./timestamp.util";
 import RefreshToken from "../classes/RefreshToken";
 import { FastifyReply } from "fastify";
-import cookieInterface from "../interfaces/cookie.interface";
-import CookieInterface from "../interfaces/cookie.interface";
 
 export function sendAuthCookies(refreshToken: RefreshToken, jwt: string, rep: FastifyReply): void {
-    buildJwtCookie(jwt, rep, true);
-    buildRefreshTokenCookie(refreshToken, rep, true);
+    sendJwtCookie(jwt, rep);
+    sendRefreshTokenCookie(refreshToken, rep);
 }
 
-export function buildJwtCookie(jwt: string, rep: FastifyReply, headerAdding: boolean): CookieInterface {
-    const cookieTyped: CookieInterface = {
-        cookieName: "auth_token",
-        cookieValue: jwt,
-        options: {
-            httpOnly: env.ENVIRONMENT === "PRODUCTION",
-            secure: env.ENVIRONMENT === "PRODUCTION",
-            sameSite: "strict",
-            maxAge: addMinutes(getTimestamp(), 60),
-            path: "/"
-        }
-    };
-
-    const cookie: string = buildCookie(cookieTyped);
-    if (headerAdding) rep.header("set-cookie", cookie);
-    return cookieTyped;
+export function flushAuthCookies(rep: FastifyReply): void {
+    flushJwtCookie(rep);
+    flushRefreshTokenCookie(rep);
 }
 
-export function buildRefreshTokenCookie(refreshToken: RefreshToken, rep: FastifyReply, headerAdding: boolean): CookieInterface {
-    const cookieType: CookieInterface = {
-        cookieName: "refresh_token",
-        cookieValue: refreshToken.getToken,
-        options: {
-            httpOnly: env.ENVIRONMENT === "PRODUCTION",
-            secure: env.ENVIRONMENT === "PRODUCTION",
-            sameSite: "strict",
-            maxAge: addDays(getTimestamp(), 30),
-            path: "/token/refresh"
-        }
-    };
-    const cookie: string = buildCookie(cookieType);
-    if (headerAdding) rep.header("set-cookie", cookie);
-    return cookieType;
+export function flushRefreshTokenCookie(rep: FastifyReply): void {
+    rep.clearCookie("refresh_token");
 }
 
-function buildCookie(cookie: cookieInterface): string {
-    let cookieString = `${cookie.cookieName}=${cookie.cookieValue}`;
+export function flushJwtCookie(rep: FastifyReply): void {
+    rep.clearCookie("auth_token");
+}
 
-    if (cookie.options.httpOnly) {
-        cookieString += "; HttpOnly";
-    }
+export function sendJwtCookie(jwt: string, rep: FastifyReply): void {
+    rep.setCookie("auth_token", jwt, {
+        path: "/",
+        maxAge: addMinutes(getTimestamp(), 5),
+        sameSite: "strict",
+        httpOnly: env.ENVIRONMENT === "PRODUCTION",
+        secure: env.ENVIRONMENT === "PRODUCTION",
+        priority: "high",
+        domain: env.ENVIRONMENT === "PRODUCTION" ? env.IP : undefined,
+        signed: false
+    });
+}
 
-    if (cookie.options.secure) {
-        cookieString += "; Secure";
-    }
-
-    if (cookie.options.sameSite) {
-        cookieString += `; SameSite=${cookie.options.sameSite}`;
-    }
-
-    if (cookie.options.path) {
-        cookieString += `; Path=${cookie.options.path}`;
-    }
-
-    if (cookie.options.maxAge) {
-        cookieString += `; Max-Age=${cookie.options.maxAge}`;
-    }
-
-    return cookieString;
+export function sendRefreshTokenCookie(refreshToken: RefreshToken, rep: FastifyReply): void {
+    rep.setCookie("refresh_token", refreshToken.getToken, {
+        path: "/",
+        maxAge: addDays(getTimestamp(), 60),
+        sameSite: "strict",
+        httpOnly: env.ENVIRONMENT === "PRODUCTION",
+        secure: env.ENVIRONMENT === "PRODUCTION",
+        priority: "medium",
+        domain: env.ENVIRONMENT === "PRODUCTION" ? env.IP : undefined,
+        signed: false
+    });
 }

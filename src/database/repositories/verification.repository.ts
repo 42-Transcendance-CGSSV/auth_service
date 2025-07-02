@@ -65,12 +65,28 @@ export async function getVerificationToken(userId: number): Promise<string> {
                 reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
                 return;
             }
+
             const typedRow = row as unknown as { verification_token: string };
             if (!typedRow || !("verification_token" in typedRow)) {
                 reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible de trouver ce token"));
             }
 
             resolve(typedRow.verification_token);
+        });
+    });
+}
+
+export async function needVerification(userId: number): Promise<boolean> {
+    const query = `SELECT EXISTS (SELECT 1 FROM account_verification WHERE user_id = ?) AS exists_flag;`;
+    const db = await dbPool.acquire();
+    return new Promise<boolean>((resolve, reject) => {
+        db.get(query, [userId], (err, rows: { exists_flag: boolean }) => {
+            dbPool.release(db);
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(rows.exists_flag);
         });
     });
 }
@@ -82,5 +98,5 @@ export async function deleteVerificationToken(token: string): Promise<void> {
 
     const db = await dbPool.acquire();
     db.run(query, [token]);
-    dbPool.release(db);
+    await dbPool.release(db);
 }
