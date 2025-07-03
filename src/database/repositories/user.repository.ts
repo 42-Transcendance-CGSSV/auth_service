@@ -117,13 +117,13 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
     return new Promise<void>((resolve, reject) => {
         db.run(query, finalValues, (err: Error | null) => {
             dbPool.release(db);
-            if (err)
-                reject(
-                    new ApiError(
-                        ApiErrorCode.USER_NOT_FOUND,
-                        `Impossible de mettre a jour l'utilisateur avec l'ID ${userId} dans la base de donnees !`
-                    )
-                );
+            if (err) {
+                let errorMessage = err.message;
+                if (err.message.includes("CONSTRAINT")) {
+                    if (err.message.includes("users.name")) errorMessage = "Un utilisateur avec ce pseudo existe deja !";
+                    else if (err.message.includes("users.email")) errorMessage = "Un utilisateur avec cet email existe deja !";
+                }
+                reject(new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, `Impossible de mettre a jour l'utilisateur : ${errorMessage}`));}
             else resolve();
         });
     });

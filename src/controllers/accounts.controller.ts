@@ -5,7 +5,7 @@ import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getUserByKey, updatePartialUser } from "../database/repositories/user.repository";
 import HashUtil from "../utils/hash.util";
 import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
-import { IPublicUser, toPublicUser } from "../interfaces/user.interface";
+import {IProtectedUser, IPublicUser, toPublicUser} from "../interfaces/user.interface";
 import schema from "fluent-json-schema";
 import { needVerification } from "../database/repositories/verification.repository";
 import { sendJwtCookie } from "../utils/cookies.util";
@@ -46,7 +46,12 @@ export async function registerAccountRoutes(app: FastifyInstance): Promise<void>
             if (req.body && typeof req.body === "object" && "password" in req.body && typeof req.body.password === "string") {
                 req.body.password = await HashUtil.hashPassword(req.body.password);
             }
+            if (req.body && typeof req.body === "object" && "email" in req.body && typeof req.body.email === "string") {
+                req.body.email = req.body.email.toLowerCase();
+            }
             await updatePartialUser(req.publicUser.id, req.body, fieldsToUpdate);
+            const user: IProtectedUser = await getUserByKey("id", req.publicUser.id);
+            sendJwtCookie(generateJWT(app, toPublicUser(user), "5m"), rep);
             return rep.send({
                 success: true,
                 message: "Le compte a bien ete mis a jour !"
