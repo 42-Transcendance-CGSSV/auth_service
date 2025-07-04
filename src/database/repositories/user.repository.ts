@@ -123,8 +123,8 @@ export async function updatePartialUser<T>(userId: any, partialData: Partial<T>,
                     if (err.message.includes("users.name")) errorMessage = "Un utilisateur avec ce pseudo existe deja !";
                     else if (err.message.includes("users.email")) errorMessage = "Un utilisateur avec cet email existe deja !";
                 }
-                reject(new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, `Impossible de mettre a jour l'utilisateur : ${errorMessage}`));}
-            else resolve();
+                reject(new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, `Impossible de mettre a jour l'utilisateur : ${errorMessage}`));
+            } else resolve();
         });
     });
 }

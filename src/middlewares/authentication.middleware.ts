@@ -24,7 +24,12 @@ declare module "fastify" {
 class AuthenticationMiddleware extends AMiddleware {
     public constructor() {
         super();
-        this.addRoute("/token/validate").addRoute("/picture/upload").addRoute("/picture").addRoute("/totp").addRoute("/totp/verify").addRoute("/update-account");
+        this.addRoute("/token/validate")
+            .addRoute("/picture/upload")
+            .addRoute("/picture")
+            .addRoute("/totp")
+            .addRoute("/totp/verify")
+            .addRoute("/update-account");
     }
 
     /**

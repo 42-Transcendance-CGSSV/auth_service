@@ -5,7 +5,7 @@ import { ApiError, ApiErrorCode } from "../utils/errors.util";
 import { getUserByKey, updatePartialUser } from "../database/repositories/user.repository";
 import HashUtil from "../utils/hash.util";
 import { getAccountSchema, updateAccountSchema } from "../schemas/account.schema";
-import {IProtectedUser, IPublicUser, toPublicUser} from "../interfaces/user.interface";
+import { IProtectedUser, IPublicUser, toPublicUser } from "../interfaces/user.interface";
 import schema from "fluent-json-schema";
 import { needVerification } from "../database/repositories/verification.repository";
 import { sendJwtCookie } from "../utils/cookies.util";
