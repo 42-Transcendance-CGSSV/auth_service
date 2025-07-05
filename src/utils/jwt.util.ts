@@ -17,7 +17,7 @@ export function verifyJWT(app: FastifyInstance, req: FastifyRequest): Promise<IP
         const jwt = getJWTToken(req);
         const token: string | null = jwt[1];
         if (!jwt[0] || !token) {
-            reject(new ApiError(ApiErrorCode.TOKEN_NOT_FOUND, "Impossible d'acceder au token jwt !"));
+            reject(new ApiError(ApiErrorCode.UNPROCESSABLE_ENTITY, "Impossible d'acceder au token jwt !"));
             return;
         }
 
