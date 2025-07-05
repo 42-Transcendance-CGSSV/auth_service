@@ -30,7 +30,6 @@ abstract class AMiddleware {
      */
     public register(app: FastifyInstance): void {
         app.addHook("preHandler", async (request: FastifyRequest, response: FastifyReply) => {
-            app.log.info("PreHandler hook for route: " + request.url);
             const isProtected = this.routes.some((route) => request.url.startsWith(route));
             if (!isProtected) {
                 return;

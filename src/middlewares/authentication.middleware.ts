@@ -55,8 +55,6 @@ class AuthenticationMiddleware extends AMiddleware {
             }
 
             request.publicUser = toCamelCase(payload) as IPublicUser;
-            app.log.warn("Public user authenticated: " + request.publicUser.id);
-            app.log.warn(payload);
             return true;
         } catch (error) {
             if (error instanceof TokenError) {
